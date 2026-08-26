@@ -1,0 +1,2 @@
+_fscanf
+_scanf

@@ -1,0 +1,17 @@
+__load8n tiny
+__store8n tiny
+__load8f medium,large,huge
+__store8f medium,large,huge
+__load8h medium,large,huge
+__store8h medium,large,huge
+__ldnoal8n medium,large,huge
+__ldnoal8f medium,large,huge
+__ldnoal8h medium,large,huge
+__load8np
+__store8np
+__load8fp medium,large,huge
+__store8fp medium,large,huge
+__load8hp medium,large,huge
+__store8hp medium,large,huge
+__ldnoal8fp medium,large,huge
+__ldnoal8hp medium,large,huge

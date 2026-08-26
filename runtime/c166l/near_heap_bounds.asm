@@ -1,0 +1,27 @@
+$EXTEND
+$NOMOD166
+$STDNAMES(reg.def)
+$SEGMENTED
+$CASE
+$NOEXPANDREGBANK
+$MODEL(LARGE)
+
+        NAME DC166_NEAR_HEAP_BOUNDS
+
+DC166_NEAR_HEAP_BOUNDS_PR SECTION CODE WORD PUBLIC 'CPROGRAM'
+        PUBLIC _dc166_near_heap_begin
+        PUBLIC _dc166_near_heap_end
+
+_dc166_near_heap_begin PROC FAR
+        MOV R4,#SOF ?C166_NHEAP_TOP
+        RETS
+_dc166_near_heap_begin ENDP
+
+_dc166_near_heap_end PROC FAR
+        MOV R4,#SOF ?C166_NHEAP_BOTTOM
+        RETS
+_dc166_near_heap_end ENDP
+DC166_NEAR_HEAP_BOUNDS_PR ENDS
+
+        REGDEF R0-R15
+        END

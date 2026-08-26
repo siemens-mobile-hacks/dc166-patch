@@ -1,0 +1,9 @@
+_fwprintf
+_vfwprintf
+_wprintf
+_vwprintf
+_fgetwc
+_fgetws
+_fputwc
+_fputws
+_ungetwc

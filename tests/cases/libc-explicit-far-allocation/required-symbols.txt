@@ -1,0 +1,12 @@
+_fmalloc
+_fcalloc
+_frealloc
+_ffree
+_smalloc
+_scalloc
+_srealloc
+_sfree
+_hmalloc
+_hcalloc
+_hrealloc
+_hfree

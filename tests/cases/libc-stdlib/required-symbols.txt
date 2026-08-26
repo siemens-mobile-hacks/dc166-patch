@@ -1,0 +1,7 @@
+_atoi
+_atol
+_strtol
+_strtoul
+_qsort
+_bsearch
+_errno

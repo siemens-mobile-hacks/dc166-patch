@@ -1,0 +1,18 @@
+__cpnnb
+__cpnnw
+__cpnfb medium,large,huge
+__cpnfw medium,large,huge
+__cpnhb medium,large,huge
+__cpnhw medium,large,huge
+__cpfnb medium,large,huge
+__cpfnw medium,large,huge
+__cpffb medium,large,huge
+__cpffw medium,large,huge
+__cpfhb medium,large,huge
+__cpfhw medium,large,huge
+__cphnb medium,large,huge
+__cphnw medium,large,huge
+__cphfb medium,large,huge
+__cphfw medium,large,huge
+__cphhb medium,large,huge
+__cphhw medium,large,huge

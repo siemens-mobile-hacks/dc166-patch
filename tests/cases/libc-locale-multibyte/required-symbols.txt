@@ -1,0 +1,14 @@
+_setlocale
+_localeconv
+_strerror
+_mbsinit
+_mbrlen
+_mbrtowc
+_wcrtomb
+_mbsrtowcs
+_wcsrtombs
+_mblen
+_mbtowc
+_wctomb
+_mbstowcs
+_wcstombs

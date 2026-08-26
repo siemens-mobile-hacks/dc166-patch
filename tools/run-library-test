@@ -1,0 +1,257 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -eq 2 ]] || {
+  echo "usage: $0 CASE_DIR CASE_NAME" >&2
+  exit 2
+}
+
+project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+case_dir="$(readlink -f -- "$1")"
+case_name="$2"
+wine_prefix="${WINEPREFIX:-$HOME/.wine}"
+tasking_root="${TASKING_C166_ROOT:-$wine_prefix/drive_c/Program Files (x86)/TASKING/dc166 v8.6}"
+iss_root="${DC166_ISS_ROOT:-/tmp/codex/dc166-iss}"
+runtime_work="${DC166_RUNTIME_WORK:-$project_root/build/runtime}"
+runtime_variant="${DC166_RUNTIME_VARIANT:-ext}"
+memory_model="${DC166_MEMORY_MODEL:-large}"
+link_slice="${DC166_LINK_SLICE:-}"
+
+[[ "$case_name" =~ ^[A-Za-z0-9_.-]+$ ]] || {
+  echo "run-library-test: invalid case name: $case_name" >&2
+  exit 2
+}
+[[ "$runtime_variant" == ext || "$runtime_variant" == ext2 ]] || {
+  echo "run-library-test: invalid runtime variant: $runtime_variant" >&2
+  exit 2
+}
+[[ "$memory_model" == tiny || "$memory_model" == small || \
+   "$memory_model" == medium || "$memory_model" == large || \
+   "$memory_model" == huge ]] || {
+  echo "run-library-test: invalid memory model: $memory_model" >&2
+  exit 2
+}
+if [[ "$memory_model" == small && "$runtime_variant" != ext ]]; then
+  echo "run-library-test: Small oracle execution is supported only for ext" >&2
+  exit 2
+fi
+host_source="$case_dir/host.c"
+[[ -f "$case_dir/host-$memory_model.c" ]] && \
+  host_source="$case_dir/host-$memory_model.c"
+[[ -f "$host_source" ]] || {
+  echo "run-library-test: missing $host_source" >&2
+  exit 2
+}
+[[ -x "$tasking_root/bin/xfw166.exe" ]] || {
+  echo "run-library-test: TASKING C166 not found: $tasking_root" >&2
+  exit 2
+}
+
+mkdir -p -- "$iss_root"
+if [[ "${C166_HEADLESS_X_ACTIVE:-}" != 1 ]]; then
+  export C166_HEADLESS_X_LOCK="$iss_root/headless-x.lock"
+  exec "$project_root/tools/with-headless-x" "$0" "$@"
+fi
+
+run_dir="$(mktemp -d "$iss_root/library-$case_name.XXXXXXXX")"
+keep_artifacts="${DC166_KEEP_TEST_ARTIFACTS:-0}"
+
+cleanup() {
+  status=$?
+  if [[ "$status" == 0 && "$keep_artifacts" != 1 ]]; then
+    rm -rf -- "$run_dir"
+  else
+    echo "run-library-test: artifacts: $run_dir" >&2
+  fi
+  exit "$status"
+}
+trap cleanup EXIT
+
+wine_environment=(
+  "WINEPREFIX=$wine_prefix"
+  "WINEDEBUG=${WINEDEBUG:--all}"
+  "WINEDLLOVERRIDES=${WINEDLLOVERRIDES:-winemenubuilder.exe=d;mscoree,mshtml=}"
+  "LIBGL_ALWAYS_SOFTWARE=${LIBGL_ALWAYS_SOFTWARE:-1}"
+)
+
+cp "$host_source" "$run_dir/host.c"
+cp "$project_root/tests/support/control.c" "$run_dir/control.c"
+case_asm_names=()
+case "$memory_model" in
+  tiny) model_code=t ;;
+  small) model_code=s ;;
+  medium) model_code=m ;;
+  large) model_code=l ;;
+  huge) model_code=h ;;
+esac
+for case_asm in "$case_dir"/*.asm; do
+  [[ -e "$case_asm" ]] || break
+  case_asm_name="$(basename -- "$case_asm")"
+  if [[ "$memory_model" == small ]]; then
+    cp "$case_asm" "$run_dir/$case_asm_name"
+  else
+    "$project_root/runtime/render_model_asm.pl" \
+      "$model_code" "$case_asm" "$run_dir/$case_asm_name" "$runtime_variant"
+  fi
+  if [[ "$case_asm_name" == references.asm && -n "$link_slice" ]]; then
+    [[ "$link_slice" =~ ^([0-9]+)/([1-9][0-9]*)$ ]] || {
+      echo "run-library-test: invalid DC166_LINK_SLICE: $link_slice" >&2
+      exit 2
+    }
+    perl "$project_root/tests/slice-link-references.pl" \
+      "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" \
+      "$run_dir/$case_asm_name" "$run_dir/$case_asm_name.sliced"
+    mv -- "$run_dir/$case_asm_name.sliced" "$run_dir/$case_asm_name"
+  fi
+  case_asm_names+=("$case_asm_name")
+done
+if [[ -f "$case_dir/required-symbols.txt" ]]; then
+  cp "$case_dir/required-symbols.txt" "$run_dir/required-symbols.txt"
+fi
+compiler_options=(-O0)
+if [[ -f "$case_dir/compiler-options.txt" ]]; then
+  mapfile -t case_compiler_options < "$case_dir/compiler-options.txt"
+  compiler_options+=("${case_compiler_options[@]}")
+fi
+if [[ "$memory_model" == small ]]; then
+  compiler_options+=(-DDC166_SMALL_ORACLE)
+fi
+cp "$project_root/tests/common/test.h" "$run_dir/test.h"
+layout_source="$project_root/tests/support/layout.ilo"
+if [[ "$memory_model" == tiny ]]; then
+  layout_source="$project_root/tests/support/layout-tiny.ilo"
+fi
+if [[ -f "$case_dir/layout-$memory_model.ilo" ]]; then
+  layout_source="$case_dir/layout-$memory_model.ilo"
+elif [[ "$memory_model" != tiny && -f "$case_dir/layout.ilo" ]]; then
+  layout_source="$case_dir/layout.ilo"
+fi
+cp "$layout_source" "$run_dir/layout.ilo"
+target_config=sim167.cfg
+assembler_architecture=EXTEND
+compiler_architecture=()
+if [[ "$runtime_variant" == ext2 ]]; then
+  target_config=simsuper10bo.cfg
+  assembler_architecture=EXTEND2
+  compiler_architecture=(-x2)
+fi
+cp "$tasking_root/etc/$target_config" "$run_dir/unit-target.cfg"
+cp "$tasking_root/etc/xvw.ini" "$run_dir/xvw.ini"
+"$project_root/tools/configure-crossview-headless" "$run_dir/xvw.ini"
+cp "$project_root/tests/support/session.cmd" "$run_dir/session.cmd"
+case "$memory_model" in
+  tiny) compiler_model=-Mt ;;
+  small) compiler_model=-Ms ;;
+  medium) compiler_model=-Mm ;;
+  large) compiler_model=-Ml ;;
+  huge) compiler_model=-Mh ;;
+esac
+if [[ "$memory_model" == small ]]; then
+  library_path="$runtime_work/extracted/SourceFiles/lib/$runtime_variant"
+  [[ -f "$library_path/c166s.lib" ]] || {
+    echo "run-library-test: Small oracle library not found: $library_path/c166s.lib" >&2
+    exit 2
+  }
+else
+  library_path="$project_root/lib/$runtime_variant"
+fi
+
+to_windows_path() {
+  printf 'Z:%s\n' "$1"
+}
+
+run_wine() {
+  if ! env "${wine_environment[@]}" wine "$@" >"$run_dir/tasking.log" 2>&1; then
+    cat "$run_dir/tasking.log" >&2
+    return 1
+  fi
+}
+
+(
+  cd "$run_dir"
+  startup_objects=()
+  if [[ "$memory_model" != small ]]; then
+    # Use the startup object for the same architecture and memory model as
+    # the code under test.  In particular, EXT2 must initialize the Super10
+    # system stack and register set through cstartx2.asm.
+    perl "$project_root/tools/extract-tasking-lib.pl" \
+      "$project_root/lib/$runtime_variant/rt166${model_code}.lib" target-startup
+    startup_objects+=(target-startup/cstart.obj)
+  fi
+  case_objects=()
+  for case_asm_name in "${case_asm_names[@]}"; do
+    case_object="${case_asm_name%.asm}.obj"
+    run_wine "$tasking_root/bin/a166.exe" \
+      "$case_asm_name" TO "$case_object" NOPR "$assembler_architecture"
+    case_objects+=("$case_object")
+  done
+  run_wine "$tasking_root/bin/cc166.exe" \
+    "$compiler_model" "${compiler_architecture[@]}" \
+    "${compiler_options[@]}" -gb -ieee -tmp \
+    -lib "$(to_windows_path "$library_path")" \
+    -Wo@layout.ilo -o host.abs host.c control.c \
+    "${startup_objects[@]}" "${case_objects[@]}"
+  if [[ "$runtime_variant" == ext2 ]]; then
+    generated_source="$(tr -d '\r' < host.src)"
+    grep -Fqx '$EXTEND2' <<<"$generated_source" || {
+      echo "run-library-test: compiler did not select EXTEND2" >&2
+      exit 1
+    }
+    grep -Fqx '$STDNAMES(regsuper10bo.def)' <<<"$generated_source" || {
+      echo "run-library-test: compiler did not select the Super10 register set" >&2
+      exit 1
+    }
+  fi
+  if [[ -f required-symbols.txt ]]; then
+    while read -r symbol models; do
+      [[ -z "$symbol" || "$symbol" == \#* ]] && continue
+      if [[ -n "${models:-}" && ",$models," != *",$memory_model,"* ]]; then
+        continue
+      fi
+      if ! grep -Eq "(EXTERN[[:space:]]+|SEG[[:space:]]+)${symbol}([,:])" \
+           host.src; then
+        echo "run-library-test: compiler did not emit required helper: $symbol" >&2
+        exit 1
+      fi
+    done < required-symbols.txt
+  fi
+  run_wine "$tasking_root/bin/ihex166.exe" \
+    -i32 -O host.out -o image.hex
+  set +e
+  timeout --kill-after=2s 20s env "${wine_environment[@]}" \
+    wine "$tasking_root/bin/xfw166.exe" --timeout=60 \
+    -nw -ini xvw.ini -tcfg unit-target.cfg -p session.cmd -R session.log
+  debugger_status=$?
+  set -e
+  [[ "$debugger_status" == 0 || "$debugger_status" == 124 ]] || {
+    echo "run-library-test: CrossView exited with status $debugger_status" >&2
+    exit 1
+  }
+)
+
+log="$run_dir/session.log"
+[[ -f "$log" ]] || {
+  echo "run-library-test: ISS log missing: $log" >&2
+  exit 1
+}
+if rg -n 'Download failure|bus error|Cannot set breakpoint|Unknown name|Fatal:|Program stopped:.*error' "$log"; then
+  echo "run-library-test: simulator error: $log" >&2
+  exit 1
+fi
+result_dump="$(awk '/^0x[[:xdigit:]]+ = 0x[[:xdigit:]]+ 0x[[:xdigit:]]+ / { value=$0 } END { print value }' "$log" | tr -d '\r')"
+result=
+if [[ "$result_dump" =~ ^0x[[:xdigit:]]+[[:space:]]=[[:space:]]0x([[:xdigit:]]{2})[[:space:]]0x([[:xdigit:]]{2}) ]]; then
+  result=$((16#${BASH_REMATCH[1]} + (16#${BASH_REMATCH[2]} << 8)))
+fi
+[[ "$result" == 0 ]] || {
+  echo "run-library-test: $case_name failed at case ${result:-unknown}: $log" >&2
+  exit 1
+}
+
+echo "runtime_test=$case_name"
+echo "runtime_variant=$runtime_variant"
+echo "memory_model=$memory_model"
+echo "simulator_result=0"
+if [[ "$keep_artifacts" == 1 ]]; then
+  echo "artifacts=$run_dir"
+fi

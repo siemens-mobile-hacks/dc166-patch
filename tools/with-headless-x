@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -gt 0 ]] || {
+  echo "usage: $0 COMMAND [ARG ...]" >&2
+  exit 2
+}
+
+state_dir=${DC166_ISS_ROOT:-/tmp/codex/dc166-iss}
+lock_file=${C166_HEADLESS_X_LOCK:-$state_dir/headless-x.lock}
+server_num=${DC166_XVFB_SERVER_NUM:-120}
+
+[[ "$server_num" =~ ^[0-9]+$ ]] || {
+  echo "with-headless-x: invalid server number: $server_num" >&2
+  exit 2
+}
+
+run_isolated() {
+  exec env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u DBUS_SESSION_BUS_ADDRESS \
+    XDG_SESSION_TYPE=x11 GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb \
+    SDL_VIDEODRIVER=x11 "$@"
+}
+
+if [[ "${C166_HEADLESS_X_ACTIVE:-}" == 1 ]]; then
+  [[ -n "${DISPLAY:-}" ]] || {
+    echo "with-headless-x: DISPLAY is not set" >&2
+    exit 2
+  }
+  run_isolated "$@"
+fi
+
+mkdir -p -- "$(dirname -- "$lock_file")"
+exec flock --close "$lock_file" \
+  xvfb-run -a -n "$server_num" \
+    -s '-screen 0 1024x768x24 -nolisten tcp -noreset' \
+    env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u DBUS_SESSION_BUS_ADDRESS \
+      C166_HEADLESS_X_ACTIVE=1 XDG_SESSION_TYPE=x11 GDK_BACKEND=x11 \
+      QT_QPA_PLATFORM=xcb SDL_VIDEODRIVER=x11 "$@"

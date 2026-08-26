@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -eq 1 && -f "$1" ]] || {
+  echo "usage: $0 XVW.INI" >&2
+  exit 2
+}
+
+ini=$1
+for key in bypass_dlg coverage_is_on desktop_options_save profiling_is_on \
+           source_display_coverage source_display_profiling trace_is_on; do
+  value=FALSE
+  [[ "$key" == bypass_dlg ]] && value=TRUE
+  rg -q "^${key}:" "$ini" || {
+    echo "configure-crossview-headless: missing setting: $key" >&2
+    exit 2
+  }
+  sed -i -E "s/^${key}:.*/${key}: ${value}/" "$ini"
+done

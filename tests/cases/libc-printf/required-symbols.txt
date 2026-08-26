@@ -1,0 +1,2 @@
+_sprintf
+_vsprintf

@@ -1,0 +1,9 @@
+__fstrcpy
+__fstrcmp
+__fstrtok
+__hstrcpy
+__hstrcmp
+__hstrtok
+__sstrcpy
+__sstrcmp
+__sstrtok

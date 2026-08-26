@@ -1,0 +1,4 @@
+_fprintf
+_vfprintf
+_printf
+_vprintf

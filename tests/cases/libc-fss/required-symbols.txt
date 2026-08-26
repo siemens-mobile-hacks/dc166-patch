@@ -1,0 +1,13 @@
+_open
+_read
+_write
+_close
+_lseek
+_unlink
+_stat
+_getcwd
+_chdir
+_access
+_rename
+_fstat
+_lstat

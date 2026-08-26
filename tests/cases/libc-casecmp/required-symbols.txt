@@ -1,0 +1,4 @@
+__strcasecmp
+__strncasecmp
+__wcscasecmp
+__wcsncasecmp

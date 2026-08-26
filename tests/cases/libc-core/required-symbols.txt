@@ -1,0 +1,12 @@
+_strcpy
+_strcmp
+_strlen
+_strtok
+_memcpy
+_memmove
+_memset
+_memcmp
+_isalpha
+_toupper
+_rand
+_srand

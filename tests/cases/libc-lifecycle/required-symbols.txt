@@ -1,0 +1,9 @@
+_atexit
+__doexit
+_getenv
+_system
+__simi
+__simo
+_argcv_break
+_signal
+_raise

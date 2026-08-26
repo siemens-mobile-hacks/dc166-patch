@@ -1,0 +1,6 @@
+;!@Install@!UTF-8!
+Title="TASKING C166 v8.6r1 Patched"
+BeginPrompt="Install TASKING C166 v8.6r1 with the final compiler and linker fixes?"
+Progress="yes"
+RunProgram="setup.cmd"
+;!@InstallEnd@!

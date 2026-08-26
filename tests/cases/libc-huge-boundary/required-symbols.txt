@@ -1,0 +1,13 @@
+__hstrcat
+__hstrchr
+__hstrcspn
+__hstrlen
+__hstrncat
+__hstrncmp
+__hstrncpy
+__hstrpbrk
+__hstrrchr
+__hstrspn
+__hstrstr
+__hstrcpy
+__hstrcmp

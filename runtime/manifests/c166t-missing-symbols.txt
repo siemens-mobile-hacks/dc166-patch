@@ -1,0 +1,10 @@
+# Tiny forbids every _far/_shuge/_huge declaration at language level.
+__fstrtok
+__hstrtok
+__sstrtok
+_fcalloc
+_frealloc
+_hcalloc
+_hrealloc
+_scalloc
+_srealloc

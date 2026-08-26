@@ -1,0 +1,16 @@
+_wcscpy
+_wcslen
+_wcstok
+_wmemmove
+_wcstol
+_wcstoul
+_iswctype
+_wctype
+_towctrans
+_mbrtowc
+_wcrtomb
+_mbsrtowcs
+_wcsrtombs
+_setlocale
+_localeconv
+_strerror

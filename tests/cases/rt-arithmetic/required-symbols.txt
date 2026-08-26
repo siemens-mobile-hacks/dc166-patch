@@ -1,0 +1,6 @@
+__mul
+__sdil
+__smol
+__udil
+__umol
+__icall large,huge

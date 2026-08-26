@@ -1,0 +1,12 @@
+_swprintf
+_vswprintf
+_fgetwc
+_fgetws
+_fputwc
+_fputws
+_getwc
+_getwchar
+_putwc
+_putwchar
+_ungetwc
+_fwide

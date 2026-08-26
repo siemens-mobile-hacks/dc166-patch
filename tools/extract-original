@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -eq 2 ]] || {
+  echo "usage: $0 INSTALLER.exe OUTPUT_DIR" >&2
+  exit 2
+}
+
+installer=$(readlink -f -- "$1")
+output_dir=$(readlink -m -- "$2")
+archive_dir="${output_dir}-installer"
+
+[[ -f "$installer" ]] || {
+  echo "extract-original: installer not found: $installer" >&2
+  exit 2
+}
+[[ "$(basename -- "$output_dir")" == extracted ]] || {
+  echo "extract-original: output directory must be named extracted" >&2
+  exit 2
+}
+
+rm -rf -- "$output_dir" "$archive_dir"
+mkdir -p -- "$output_dir" "$archive_dir"
+7z x -y "$installer" "-o$archive_dir" >/dev/null
+
+mapfile -t installshield_cabs < <(find "$archive_dir" -type f -name data1.cab)
+[[ ${#installshield_cabs[@]} -eq 1 ]] || {
+  echo "extract-original: expected one data1.cab, found ${#installshield_cabs[@]}" >&2
+  exit 1
+}
+unshield x -g SourceFiles -d "$output_dir" "${installshield_cabs[0]}" >/dev/null
+
+for required in bin/c166.exe bin/l166.exe lib/ext/c166s.lib lib/ext2/c166s.lib; do
+  [[ -f "$output_dir/SourceFiles/$required" ]] || {
+    echo "extract-original: missing SourceFiles/$required" >&2
+    exit 1
+  }
+done
+rm -rf -- "$archive_dir"

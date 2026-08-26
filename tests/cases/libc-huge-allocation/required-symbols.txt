@@ -1,0 +1,4 @@
+_hmalloc
+_hcalloc
+_hrealloc
+_hfree
