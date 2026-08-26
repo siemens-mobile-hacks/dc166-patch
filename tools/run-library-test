@@ -16,6 +16,7 @@ runtime_work="${DC166_RUNTIME_WORK:-$project_root/build/runtime}"
 runtime_variant="${DC166_RUNTIME_VARIANT:-ext}"
 memory_model="${DC166_MEMORY_MODEL:-large}"
 link_slice="${DC166_LINK_SLICE:-}"
+compiler_optimization="${DC166_COMPILER_OPTIMIZATION:-O0}"
 
 [[ "$case_name" =~ ^[A-Za-z0-9_.-]+$ ]] || {
   echo "run-library-test: invalid case name: $case_name" >&2
@@ -35,6 +36,10 @@ if [[ "$memory_model" == small && "$runtime_variant" != ext ]]; then
   echo "run-library-test: Small oracle execution is supported only for ext" >&2
   exit 2
 fi
+[[ "$compiler_optimization" =~ ^O(0|1|2|3|s|z)$ ]] || {
+  echo "run-library-test: invalid optimization: $compiler_optimization" >&2
+  exit 2
+}
 host_source="$case_dir/host.c"
 [[ -f "$case_dir/host-$memory_model.c" ]] && \
   host_source="$case_dir/host-$memory_model.c"
@@ -108,7 +113,7 @@ done
 if [[ -f "$case_dir/required-symbols.txt" ]]; then
   cp "$case_dir/required-symbols.txt" "$run_dir/required-symbols.txt"
 fi
-compiler_options=(-O0)
+compiler_options=("-$compiler_optimization")
 if [[ -f "$case_dir/compiler-options.txt" ]]; then
   mapfile -t case_compiler_options < "$case_dir/compiler-options.txt"
   compiler_options+=("${case_compiler_options[@]}")
@@ -234,7 +239,7 @@ log="$run_dir/session.log"
   echo "run-library-test: ISS log missing: $log" >&2
   exit 1
 }
-if rg -n 'Download failure|bus error|Cannot set breakpoint|Unknown name|Fatal:|Program stopped:.*error' "$log"; then
+if rg -n 'Download failure|bus error|on ROM write|Cannot set breakpoint|Unknown name|Fatal:|Program stopped:.*error' "$log"; then
   echo "run-library-test: simulator error: $log" >&2
   exit 1
 fi

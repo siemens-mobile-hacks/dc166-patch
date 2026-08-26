@@ -51,19 +51,26 @@ foreach(variant IN ITEMS ext ext2)
 endforeach()
 
 function(add_runtime_iss_test variant model case_name)
-  set(test_name "runtime.iss.${variant}.${model}.${case_name}")
+  set(optimization "O0")
+  set(test_suffix "")
+  if(ARGC GREATER 3)
+    set(optimization "${ARGV3}")
+    set(test_suffix ".${optimization}")
+  endif()
+  set(test_name "runtime.iss.${variant}.${model}.${case_name}${test_suffix}")
   add_test(
     NAME "${test_name}"
     COMMAND "${CMAKE_COMMAND}" -E env
             "DC166_MEMORY_MODEL=${model}"
             "DC166_RUNTIME_VARIANT=${variant}"
             "DC166_RUNTIME_WORK=${DC166_RUNTIME_WORK}"
+            "DC166_COMPILER_OPTIMIZATION=${optimization}"
             "${PROJECT_SOURCE_DIR}/tools/run-library-test"
             "${CMAKE_CURRENT_SOURCE_DIR}/cases/${case_name}"
             "${case_name}-${model}-${variant}"
   )
   set_tests_properties("${test_name}" PROPERTIES
-    LABELS "runtime;iss;${model};${variant};${case_name}"
+    LABELS "runtime;iss;${model};${variant};${case_name};${optimization}"
     RUN_SERIAL TRUE
     TIMEOUT 150
   )
@@ -151,6 +158,17 @@ foreach(variant IN ITEMS ext ext2)
     else()
       add_runtime_iss_test("${variant}" "${model}" "runtime-link-all")
     endif()
+  endforeach()
+endforeach()
+
+# Bidirectional assembly oracles prevent TASKING caller/callee conventions
+# from hiding the same mistake on both sides of a C-to-C call.
+foreach(variant IN ITEMS ext ext2)
+  foreach(model IN ITEMS tiny medium large huge)
+    foreach(optimization IN ITEMS O0 O1 O2 O3 Os Oz)
+      add_runtime_iss_test("${variant}" "${model}" "abi-double-return"
+                           "${optimization}")
+    endforeach()
   endforeach()
 endforeach()
 

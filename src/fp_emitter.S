@@ -35,6 +35,7 @@
 	.equ WANT_DBL_R11,    0x000b0008
 	.equ WANT_DBL_R10,    0x000c0008
 	.equ WANT_DBL_RESULT, 0x200b0008
+	.equ RESULT_DBL_R4,   0x000b1008
 	.equ RESULT_DBL_R10,  0x000b1014
 	.equ WANT_NEAR_PTR,   0x00010018
 
@@ -325,7 +326,11 @@ fp_emitter:
 	jmp .Ldone
 
 .Ldouble_return:
-	push 0
+	/* The public Classic ABI returns a double in a user-stack block and
+	   publishes that block through R4.  Keep the internal R10-owned block,
+	   but require the return expression to expose its pointer in R4 before
+	   the generic function epilogue is emitted. */
+	push REG_R4_WORD
 	push WANT_DBL_RESULT
 	push dword ptr [esi + 0x0c]
 	call emit_node
@@ -902,15 +907,23 @@ fp_emitter:
 	or eax, 0xcf000000
 	mov dword ptr [eax], eax
 	.endif
-	/* The generic call emitter already accounts for the callee-owned return
-	   block; only expose its R10 pointer as this expression's result. */
-	push REG_R10_WORD
+	/* Classic callees publish the user-stack return block through R4.  Record
+	   that ABI location first, then let the ordinary mover satisfy the
+	   expression's requested internal location (normally R10). */
+	push REG_R4_WORD
 	call reserve_location
 	add esp, 4
-	push RESULT_DBL_R10
+	push RESULT_DBL_R4
 	push esi
 	call record_result
 	add esp, 8
+	test edi, edi
+	jz .Ldone
+	push ebx
+	push edi
+	push esi
+	call move_result
+	add esp, 12
 	jmp .Ldone
 
 .Lindirect:
