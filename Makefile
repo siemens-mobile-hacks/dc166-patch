@@ -9,6 +9,7 @@ RUNTIME_WORK ?= $(CURDIR)/build/runtime
 ORIGINAL_INSTALLER := inputs/Tasking-C166-8.6r1-original.exe
 C166_ORIGINAL := $(RUNTIME_WORK)/extracted/SourceFiles/bin/c166.exe
 L166_ORIGINAL := $(RUNTIME_WORK)/extracted/SourceFiles/bin/l166.exe
+XFW166_ORIGINAL := $(RUNTIME_WORK)/extracted/SourceFiles/bin/xfw166.exe
 
 OBJECT := $(WORK)/fp_emitter.o
 ELF := $(WORK)/fp_emitter.elf
@@ -16,9 +17,11 @@ PAYLOAD := $(WORK)/fp_emitter.bin
 C166_BASE := $(WORK)/c166-base.exe
 C166_PATCHED := $(WORK)/c166-patched.exe
 L166_PATCHED := $(WORK)/l166-patched.exe
+XFW166_PATCHED := $(WORK)/xfw166-patched.exe
 
 FINAL_C166_PATCH := patches/final/c166.vkp
 FINAL_L166_PATCH := patches/final/l166.vkp
+FINAL_XFW166_PATCH := patches/final/xfw166.vkp
 FINAL_INSTALLER := dist/Tasking-C166-8.6r1-patched.exe
 
 RUNTIME_EXTRACTED := $(RUNTIME_WORK)/extracted/.stamp
@@ -39,7 +42,8 @@ C166_HEADERS := $(wildcard runtime/c166l/*.h)
 .PHONY: all rebuild installer libraries verify clean
 .SECONDARY:
 
-all: $(FINAL_C166_PATCH) $(FINAL_L166_PATCH) $(RUNTIME_LIBS) $(FINAL_INSTALLER)
+all: $(FINAL_C166_PATCH) $(FINAL_L166_PATCH) $(FINAL_XFW166_PATCH) \
+	$(RUNTIME_LIBS) $(FINAL_INSTALLER)
 
 rebuild:
 	$(MAKE) clean
@@ -57,7 +61,7 @@ $(RUNTIME_EXTRACTED): $(ORIGINAL_INSTALLER) tools/extract-original
 	tools/extract-original $(ORIGINAL_INSTALLER) $(RUNTIME_WORK)/extracted
 	touch $@
 
-$(C166_ORIGINAL) $(L166_ORIGINAL): $(RUNTIME_EXTRACTED)
+$(C166_ORIGINAL) $(L166_ORIGINAL) $(XFW166_ORIGINAL): $(RUNTIME_EXTRACTED)
 	@test -f $@
 
 define MODEL_RULES
@@ -151,17 +155,24 @@ $(C166_PATCHED): $(C166_BASE) $(PAYLOAD) src/patch_c166_fp.pl
 $(L166_PATCHED): $(L166_ORIGINAL) src/patches/l166_base.vkp src/apply_vkp.pl | $(WORK)
 	$(PERL) src/apply_vkp.pl src/patches/l166_base.vkp $(L166_ORIGINAL) $@
 
+$(XFW166_PATCHED): $(XFW166_ORIGINAL) src/patches/xfw166_base.vkp src/apply_vkp.pl | $(WORK)
+	$(PERL) src/apply_vkp.pl src/patches/xfw166_base.vkp $(XFW166_ORIGINAL) $@
+
 $(FINAL_C166_PATCH): $(C166_ORIGINAL) $(C166_PATCHED) src/make_vkp.pl | patches/final
 	$(PERL) src/make_vkp.pl $(C166_ORIGINAL) $(C166_PATCHED) $@
 
 $(FINAL_L166_PATCH): $(L166_ORIGINAL) $(L166_PATCHED) src/make_vkp.pl | patches/final
 	$(PERL) src/make_vkp.pl $(L166_ORIGINAL) $(L166_PATCHED) $@
 
-$(FINAL_INSTALLER): $(ORIGINAL_INSTALLER) $(C166_PATCHED) $(L166_PATCHED) \
+$(FINAL_XFW166_PATCH): $(XFW166_ORIGINAL) $(XFW166_PATCHED) src/make_vkp.pl | patches/final
+	$(PERL) src/make_vkp.pl $(XFW166_ORIGINAL) $(XFW166_PATCHED) $@
+
+$(FINAL_INSTALLER): $(ORIGINAL_INSTALLER) $(C166_PATCHED) $(L166_PATCHED) $(XFW166_PATCHED) \
 		$(RUNTIME_LIBS) installer/build_sfx.sh installer/setup.cmd \
 		installer/sfx-config.txt installer/vendor/7zSD.sfx | dist
 	TASKING_C166_INSTALLER='$(abspath $(ORIGINAL_INSTALLER))' \
 	C166_PATCHED='$(C166_PATCHED)' L166_PATCHED='$(L166_PATCHED)' \
+	XFW166_PATCHED='$(XFW166_PATCHED)' \
 	RUNTIME_LIB_ROOT='$(abspath lib)' \
 	./installer/build_sfx.sh
 
@@ -170,6 +181,8 @@ verify: all
 	cmp $(C166_PATCHED) $(WORK)/c166-from-final-vkp.exe
 	$(PERL) src/apply_vkp.pl $(FINAL_L166_PATCH) $(L166_ORIGINAL) $(WORK)/l166-from-final-vkp.exe
 	cmp $(L166_PATCHED) $(WORK)/l166-from-final-vkp.exe
+	$(PERL) src/apply_vkp.pl $(FINAL_XFW166_PATCH) $(XFW166_ORIGINAL) $(WORK)/xfw166-from-final-vkp.exe
+	cmp $(XFW166_PATCHED) $(WORK)/xfw166-from-final-vkp.exe
 	$(PERL) tests/check-archives.pl $(CURDIR)
 	$(PERL) runtime/audit_libc.pl \
 		$(RUNTIME_WORK)/extracted/SourceFiles/lib/ext/c166s.lib \
@@ -182,6 +195,7 @@ verify: all
 	cmp $(ORIGINAL_INSTALLER) $(WORK)/sfx-verify/original-installer.exe
 	cmp $(C166_PATCHED) $(WORK)/sfx-verify/payload/c166-patched.exe
 	cmp $(L166_PATCHED) $(WORK)/sfx-verify/payload/l166-patched.exe
+	cmp $(XFW166_PATCHED) $(WORK)/sfx-verify/payload/xfw166-patched.exe
 	@for variant in $(RUNTIME_VARIANTS); do \
 		for model in $(MEMORY_MODELS); do for family in c166 fp166 rt166; do \
 			library=$$family$$model.lib; \
@@ -194,4 +208,4 @@ clean:
 	rm -rf -- $(WORK)
 	rm -rf -- $(RUNTIME_WORK)
 	rm -rf -- lib
-	rm -f -- $(FINAL_C166_PATCH) $(FINAL_L166_PATCH) $(FINAL_INSTALLER)
+	rm -f -- $(FINAL_C166_PATCH) $(FINAL_L166_PATCH) $(FINAL_XFW166_PATCH) $(FINAL_INSTALLER)

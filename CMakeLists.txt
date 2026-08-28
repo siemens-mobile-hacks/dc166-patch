@@ -23,4 +23,16 @@ add_custom_target(patched-linker ALL
   USES_TERMINAL
 )
 
+add_custom_target(patched-debugger ALL
+  COMMAND "${MAKE_EXECUTABLE}" -C "${CMAKE_CURRENT_SOURCE_DIR}"
+          "WORK=${CMAKE_BINARY_DIR}/work"
+          "RUNTIME_WORK=${DC166_RUNTIME_WORK}"
+          "${CMAKE_BINARY_DIR}/work/xfw166-patched.exe"
+  COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+          "${CMAKE_BINARY_DIR}/work/xfw166-patched.exe"
+          "${DC166_RUNTIME_WORK}/extracted/SourceFiles/bin/xfw166-patched.exe"
+  DEPENDS patched-linker
+  USES_TERMINAL
+)
+
 add_subdirectory(tests)

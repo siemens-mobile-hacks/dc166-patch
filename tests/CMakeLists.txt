@@ -77,6 +77,7 @@ function(add_runtime_iss_test variant model case_name)
             "DC166_MEMORY_MODEL=${model}"
             "DC166_RUNTIME_VARIANT=${variant}"
             "DC166_RUNTIME_WORK=${DC166_RUNTIME_WORK}"
+            "DC166_DEBUGGER=${DC166_RUNTIME_WORK}/extracted/SourceFiles/bin/xfw166-patched.exe"
             "DC166_COMPILER_OPTIMIZATION=${optimization}"
             "${PROJECT_SOURCE_DIR}/tools/run-library-test"
             "${CMAKE_CURRENT_SOURCE_DIR}/cases/${case_name}"
@@ -84,26 +85,6 @@ function(add_runtime_iss_test variant model case_name)
   )
   set_tests_properties("${test_name}" PROPERTIES
     LABELS "runtime;iss;${model};${variant};${case_name};${optimization}"
-    RUN_SERIAL TRUE
-    TIMEOUT 150
-  )
-endfunction()
-
-function(add_runtime_link_slice variant model slice count)
-  set(test_name "runtime.iss.${variant}.${model}.runtime-link-${slice}")
-  add_test(
-    NAME "${test_name}"
-    COMMAND "${CMAKE_COMMAND}" -E env
-            "DC166_MEMORY_MODEL=${model}"
-            "DC166_RUNTIME_VARIANT=${variant}"
-            "DC166_RUNTIME_WORK=${DC166_RUNTIME_WORK}"
-            "DC166_LINK_SLICE=${slice}/${count}"
-            "${PROJECT_SOURCE_DIR}/tools/run-library-test"
-            "${CMAKE_CURRENT_SOURCE_DIR}/cases/runtime-link-all"
-            "runtime-link-${slice}-${model}-${variant}"
-  )
-  set_tests_properties("${test_name}" PROPERTIES
-    LABELS "runtime;iss;${model};${variant};runtime-link"
     RUN_SERIAL TRUE
     TIMEOUT 150
   )
@@ -161,14 +142,7 @@ foreach(variant IN ITEMS ext ext2)
       add_runtime_iss_test("${variant}" "${model}" "${case_name}")
     endforeach()
 
-    # CrossView cannot load the complete Tiny/Medium image with all adapters.
-    if(model STREQUAL "tiny" OR model STREQUAL "medium")
-      foreach(slice RANGE 0 7)
-        add_runtime_link_slice("${variant}" "${model}" "${slice}" 8)
-      endforeach()
-    else()
-      add_runtime_iss_test("${variant}" "${model}" "runtime-link-all")
-    endif()
+    add_runtime_iss_test("${variant}" "${model}" "runtime-link-all")
   endforeach()
 endforeach()
 

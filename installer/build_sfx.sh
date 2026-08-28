@@ -6,6 +6,7 @@ project_dir=$(cd -- "$script_dir/.." && pwd)
 tasking_installer=${TASKING_C166_INSTALLER:-$project_dir/inputs/Tasking-C166-8.6r1-original.exe}
 c166_patched=${C166_PATCHED:-$project_dir/build/work/c166-patched.exe}
 l166_patched=${L166_PATCHED:-$project_dir/build/work/l166-patched.exe}
+xfw166_patched=${XFW166_PATCHED:-$project_dir/build/work/xfw166-patched.exe}
 runtime_lib_root=${RUNTIME_LIB_ROOT:-$project_dir/lib}
 temp_parent=/tmp/codex/dc166-installer
 sfx_module=$script_dir/vendor/7zSD.sfx
@@ -15,6 +16,7 @@ test -f "$tasking_installer"
 test -f "$sfx_module"
 test -f "$c166_patched"
 test -f "$l166_patched"
+test -f "$xfw166_patched"
 for variant in ext ext2; do
     for model in t m l h; do
         for family in c166 fp166 rt166; do
@@ -34,6 +36,7 @@ cp "$script_dir/setup.cmd" "$build_dir/package/setup.cmd"
 cp "$tasking_installer" "$build_dir/package/original-installer.exe"
 cp "$c166_patched" "$build_dir/package/payload/c166-patched.exe"
 cp "$l166_patched" "$build_dir/package/payload/l166-patched.exe"
+cp "$xfw166_patched" "$build_dir/package/payload/xfw166-patched.exe"
 for variant in ext ext2; do
     cp "$runtime_lib_root/$variant/"*.lib \
         "$build_dir/package/payload/lib/$variant/"
