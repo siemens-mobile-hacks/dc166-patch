@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -eq 3 ]] || {
+  echo "usage: $0 A166_EXE PATCHED_L166_EXE WORK_ROOT" >&2
+  exit 2
+}
+
+a166="$(readlink -f -- "$1")"
+l166="$(readlink -f -- "$2")"
+work_root="$(readlink -m -- "$3")"
+
+[[ -f "$a166" && -f "$l166" ]] || {
+  echo "check-linker-demo-limits: tool not found" >&2
+  exit 2
+}
+
+mkdir -p -- "$work_root"
+run_dir="$(mktemp -d "$work_root/demo-limits.XXXXXXXX")"
+cleanup() {
+  status=$?
+  if [[ "$status" == 0 ]]; then
+    rm -rf -- "$run_dir"
+  else
+    echo "check-linker-demo-limits: artifacts: $run_dir" >&2
+  fi
+}
+trap cleanup EXIT
+
+wine_prefix="${WINEPREFIX:-$HOME/.wine}"
+wine_environment=(
+  "WINEPREFIX=$wine_prefix"
+  "WINEDEBUG=${WINEDEBUG:--all}"
+  "WINEDLLOVERRIDES=${WINEDLLOVERRIDES:-winemenubuilder.exe=d;mscoree,mshtml=}"
+  "LIBGL_ALWAYS_SOFTWARE=${LIBGL_ALWAYS_SOFTWARE:-1}"
+)
+
+run_wine() {
+  local log=$1
+  shift
+  env "${wine_environment[@]}" wine "$@" >"$log" 2>&1
+}
+
+assemble() {
+  local source=$1
+  local object=$2
+  if ! run_wine "$source.log" "$a166" \
+      "$source" TO "$object" NOPR EXTEND; then
+    cat "$source.log" >&2
+    return 1
+  fi
+}
+
+link_fixture() {
+  local name=$1
+  shift
+  local log="$name.log"
+  if ! run_wine "$log" "$l166" LINK "$@" TO "$name.lno"; then
+    cat "$log" >&2
+    echo "check-linker-demo-limits: patched linker failed $name" >&2
+    return 1
+  fi
+  [[ -s "$name.lno" ]] || {
+    echo "check-linker-demo-limits: patched linker produced no $name output" >&2
+    return 1
+  }
+}
+
+cd "$run_dir"
+
+for number in $(seq -w 1 16); do
+  source="module-$number.asm"
+  printf '%s\n' \
+    '$EXTEND' '$NOMOD166' '$SEGMENTED' '$MODEL(LARGE)' \
+    "NAME MODULE$number" 'END' >"$source"
+  assemble "$source" "module-$number.obj"
+done
+modules=(module-*.obj)
+link_fixture modules "${modules[@]}"
+
+# Above the former demo quota, below the real 16-bit section limit.
+{
+  printf '%s\n' '$EXTEND' '$NOMOD166' '$SEGMENTED' '$MODEL(LARGE)' \
+    'NAME MANY_SECTIONS'
+  for number in $(seq -w 1 180); do
+    printf "S%s SECTION CODE WORD PUBLIC 'CPROGRAM'\n" "$number"
+    printf 'P%s PROC FAR\n NOP\n RETS\nP%s ENDP\nS%s ENDS\n' \
+      "$number" "$number" "$number"
+  done
+  printf '%s\n' 'END'
+} >sections.asm
+assemble sections.asm sections.obj
+link_fixture sections sections.obj
+
+# Above the former demo quota, below the real 24-bit symbol-table limit.
+{
+  printf '%s\n' '$EXTEND' '$NOMOD166' '$SEGMENTED' '$MODEL(LARGE)' \
+    'NAME MANY_SYMBOLS' \
+    "SYMBOL_CODE SECTION CODE WORD PUBLIC 'CPROGRAM'" \
+    'SYMBOL_PROC PROC FAR'
+  for number in $(seq -w 1 17100); do
+    printf ' PUBLIC _symbol_%s\n_symbol_%s:\n' "$number" "$number"
+  done
+  printf '%s\n' ' RETS' 'SYMBOL_PROC ENDP' 'SYMBOL_CODE ENDS' 'END'
+} >symbols.asm
+assemble symbols.asm symbols.obj
+link_fixture symbols symbols.obj
+
+# Exceeds the former output-byte quota without approaching a target limit.
+{
+  printf '%s\n' '$EXTEND' '$NOMOD166' '$SEGMENTED' '$MODEL(LARGE)' \
+    'NAME MANY_BYTES' \
+    "BYTE_CODE SECTION CODE WORD PUBLIC 'CPROGRAM'" \
+    'BYTE_PROC PROC FAR'
+  for _ in $(seq 1 10000); do
+    printf '%s\n' ' NOP'
+  done
+  printf '%s\n' ' RETS' 'BYTE_PROC ENDP' 'BYTE_CODE ENDS' 'END'
+} >bytes.asm
+assemble bytes.asm bytes.obj
+link_fixture bytes bytes.obj
+
+echo 'linker demo-limit tests passed'

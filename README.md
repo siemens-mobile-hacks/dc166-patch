@@ -4,7 +4,7 @@ Patches and runtime libraries for TASKING C166/ST10 v8.6r1 Build 753.
 
 Changes:
 
-- removed compiler and linker demo output limits;
+- removed compiler and linker demo restrictions;
 - enabled `float`/`double` code generation and fixed their Classic ABI;
 - added `c166`, `fp166` and `rt166` libraries for Tiny, Medium, Large and Huge;
 - added C167 (`ext`) and Super10 (`ext2`) runtime variants.

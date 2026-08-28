@@ -1,6 +1,19 @@
 find_program(PERL_EXECUTABLE perl REQUIRED)
 
 add_test(
+  NAME linker.demo-limits
+  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/check-linker-demo-limits"
+          "${DC166_RUNTIME_WORK}/extracted/SourceFiles/bin/a166.exe"
+          "${CMAKE_BINARY_DIR}/work/l166-patched.exe"
+          "${CMAKE_BINARY_DIR}/linker-tests"
+)
+set_tests_properties(linker.demo-limits PROPERTIES
+  LABELS "linker;wine;demo-limits"
+  RUN_SERIAL TRUE
+  TIMEOUT 180
+)
+
+add_test(
   NAME runtime.archive-audit
   COMMAND "${PERL_EXECUTABLE}"
           "${CMAKE_CURRENT_SOURCE_DIR}/check-archives.pl"
@@ -148,9 +161,7 @@ foreach(variant IN ITEMS ext ext2)
       add_runtime_iss_test("${variant}" "${model}" "${case_name}")
     endforeach()
 
-    # Tiny/Medium archives contain a Near adapter plus a renamed FAR body for
-    # each helper.  Link them in slices to stay below the demo linker's section
-    # count while still referencing every FP/RT entry point.
+    # CrossView cannot load the complete Tiny/Medium image with all adapters.
     if(model STREQUAL "tiny" OR model STREQUAL "medium")
       foreach(slice RANGE 0 7)
         add_runtime_link_slice("${variant}" "${model}" "${slice}" 8)

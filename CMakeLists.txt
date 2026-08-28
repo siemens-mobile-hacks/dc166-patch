@@ -9,7 +9,17 @@ set(DC166_RUNTIME_WORK "${CMAKE_BINARY_DIR}/runtime" CACHE PATH
 
 add_custom_target(runtime-libraries ALL
   COMMAND "${MAKE_EXECUTABLE}" -C "${CMAKE_CURRENT_SOURCE_DIR}"
+          "WORK=${CMAKE_BINARY_DIR}/work"
           "RUNTIME_WORK=${DC166_RUNTIME_WORK}" libraries
+  USES_TERMINAL
+)
+
+add_custom_target(patched-linker ALL
+  COMMAND "${MAKE_EXECUTABLE}" -C "${CMAKE_CURRENT_SOURCE_DIR}"
+          "WORK=${CMAKE_BINARY_DIR}/work"
+          "RUNTIME_WORK=${DC166_RUNTIME_WORK}"
+          "${CMAKE_BINARY_DIR}/work/l166-patched.exe"
+  DEPENDS runtime-libraries
   USES_TERMINAL
 )
 
