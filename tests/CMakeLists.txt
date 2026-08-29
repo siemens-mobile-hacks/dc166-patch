@@ -153,6 +153,8 @@ foreach(variant IN ITEMS ext ext2)
     foreach(optimization IN ITEMS O0 O1 O2 O3 Os Oz)
       add_runtime_iss_test("${variant}" "${model}" "abi-double-return"
                            "${optimization}")
+      add_runtime_iss_test("${variant}" "${model}" "fp-expression-chain"
+                           "${optimization}")
     endforeach()
   endforeach()
 endforeach()

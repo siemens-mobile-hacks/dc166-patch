@@ -37,6 +37,7 @@
 	.equ WANT_DBL_RESULT, 0x200b0008
 	.equ RESULT_DBL_R4,   0x000b1008
 	.equ RESULT_DBL_R10,  0x000b1014
+	.equ RESULT_DBL_R11,  0x000b1016
 	.equ WANT_NEAR_PTR,   0x00010018
 
 	/* FUN_00444010 helper encoding: base id | suffix '4' | suffix 'r'. */
@@ -992,6 +993,19 @@ fp_emitter:
 	push dword ptr [esi + 0x08]
 	call emit_node
 	add esp, 12
+
+	/* A nested first operand may displace the saved second-operand pointer
+	   from R11 to R12 or beyond.  Arithmetic helpers preserve R10/R11, so
+	   restore the pointer explicitly before invoking the outer helper. */
+	mov ecx, dword ptr [esi + 0x0c]
+	cmp dword ptr [ecx + 0x14], RESULT_DBL_R11
+	je .Ldouble_right_ready
+	push REG_R11_WORD
+	push WANT_DBL_R11
+	push ecx
+	call move_result
+	add esp, 12
+.Ldouble_right_ready:
 
 	pop eax
 	push eax
