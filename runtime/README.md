@@ -1,7 +1,8 @@
 # Runtime libraries
 
-The build creates TASKING Classic libraries for Tiny (`t`), Medium (`m`),
-Large (`l`) and Huge (`h`) in both `ext` variants:
+The build creates TASKING Classic `c166` and `rt166` libraries for Tiny (`t`),
+Medium (`m`), Large (`l`) and Huge (`h`), and `fp166` libraries for Small
+(`s`) through Huge, in both `ext` variants:
 
 - `fp166?.lib`: floating-point arithmetic, conversions, comparisons and
   double load/store helpers.

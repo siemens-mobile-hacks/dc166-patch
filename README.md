@@ -6,7 +6,8 @@ Changes:
 
 - removed compiler, linker and debugger demo restrictions;
 - enabled `float`/`double` code generation, fixed their Classic ABI and
-  preserved signed zero in constants and `float` to `double` conversion;
+  fixed IEEE `float` to `double` conversion, including signed zero,
+  subnormal values, infinities and NaNs;
 - added `c166` and `rt166` libraries for Tiny, Medium, Large and Huge;
 - added patched `fp166` libraries for Small, Tiny, Medium, Large and Huge;
 - added C167 (`ext`) and Super10 (`ext2`) runtime variants.

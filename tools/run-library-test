@@ -32,10 +32,6 @@ compiler_optimization="${DC166_COMPILER_OPTIMIZATION:-O0}"
   echo "run-library-test: invalid memory model: $memory_model" >&2
   exit 2
 }
-if [[ "$memory_model" == small && "$runtime_variant" != ext ]]; then
-  echo "run-library-test: Small oracle execution is supported only for ext" >&2
-  exit 2
-fi
 [[ "$compiler_optimization" =~ ^O(0|1|2|3|s|z)$ ]] || {
   echo "run-library-test: invalid optimization: $compiler_optimization" >&2
   exit 2
@@ -150,11 +146,15 @@ case "$memory_model" in
   huge) compiler_model=-Mh ;;
 esac
 if [[ "$memory_model" == small ]]; then
-  library_path="$runtime_work/extracted/SourceFiles/lib/$runtime_variant"
-  [[ -f "$library_path/c166s.lib" ]] || {
-    echo "run-library-test: Small oracle library not found: $library_path/c166s.lib" >&2
+  original_small_lib="$runtime_work/extracted/SourceFiles/lib/$runtime_variant"
+  library_path="$run_dir/small-lib"
+  [[ -f "$original_small_lib/c166s.lib" ]] || {
+    echo "run-library-test: Small library not found: $original_small_lib/c166s.lib" >&2
     exit 2
   }
+  mkdir -p "$library_path"
+  cp "$original_small_lib/"*.lib "$library_path/"
+  cp "$project_root/lib/$runtime_variant/fp166s.lib" "$library_path/fp166s.lib"
 else
   library_path="$project_root/lib/$runtime_variant"
 fi
@@ -212,7 +212,7 @@ run_wine() {
         continue
       fi
       if ! grep -Eq "(EXTERN[[:space:]]+|SEG[[:space:]]+)${symbol}([,:])" \
-           host.src; then
+           -- *.src; then
         echo "run-library-test: compiler did not emit required helper: $symbol" >&2
         exit 1
       fi

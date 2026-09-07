@@ -188,7 +188,14 @@ foreach(optimization IN ITEMS O0 O1 O2 O3 Os Oz)
                        "${optimization}")
 endforeach()
 
-# Original Small is retained as a behavior oracle for the reconstructed libc.
+foreach(variant IN ITEMS ext ext2)
+  foreach(optimization IN ITEMS O0 O1 O2 O3 Os Oz)
+    add_runtime_iss_test("${variant}" "small" "fp-signed-zero"
+                         "${optimization}")
+  endforeach()
+endforeach()
+
+# Small keeps the original c166/rt libraries and uses the patched fp166s.
 set(runtime_small_oracle_cases
   libc-casecmp
   libc-explicit-near-allocation

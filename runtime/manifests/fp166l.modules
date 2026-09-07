@@ -28,7 +28,6 @@ putf4.obj
 putf8.obj
 trpf4.obj
 trpf8.obj
-fpfix.obj
 load8n.obj
 load8f.obj
 load8h.obj

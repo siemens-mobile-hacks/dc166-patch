@@ -3,8 +3,8 @@
 use strict;
 use warnings;
 
-@ARGV == 3 or die "usage: $0 INPUT.lib FPFIX.obj OUTPUT.lib\n";
-my ($input_path, $helper_path, $output_path) = @ARGV;
+@ARGV == 3 or die "usage: $0 INPUT.lib CFF48.obj OUTPUT.lib\n";
+my ($input_path, $replacement_path, $output_path) = @ARGV;
 
 sub read_raw {
     my ($path) = @_;
@@ -16,6 +16,7 @@ sub read_raw {
 }
 
 my $archive = read_raw($input_path);
+my $replacement = read_raw($replacement_path);
 substr($archive, 0, 7) eq "!<ar>!\n"
     or die "$input_path: invalid ar166 header\n";
 
@@ -32,19 +33,13 @@ while (pos($archive) < length($archive)) {
     pos($archive) += $size;
 
     if ($name eq 'cff48.obj') {
-        my $count = ($member =~ s/__dzersr\0/__dzerfr\0/g);
-        $count == 1
-            or die "$input_path($name): expected one __dzersr reference\n";
+        $member = $replacement;
         $patched++;
     }
     $result .= sprintf("!<ar:%-20s %d>!\n", $name, length($member));
     $result .= $member;
 }
 $patched == 1 or die "$input_path: missing cff48.obj\n";
-
-my $helper = read_raw($helper_path);
-$result .= sprintf("!<ar:%-20s %d>!\n", 'fpfix.obj', length($helper));
-$result .= $helper;
 
 open my $output_fh, '>:raw', $output_path or die "$output_path: $!\n";
 print {$output_fh} $result or die "$output_path: $!\n";

@@ -39,24 +39,24 @@ C166_GENERATED_MEMBERS_l := $(C166_GENERATED_MEMBERS)
 C166_GENERATED_MEMBERS_h := $(C166_GENERATED_MEMBERS)
 C166_SOURCES := $(wildcard runtime/c166l/*.c runtime/c166l/*.asm)
 C166_HEADERS := $(wildcard runtime/c166l/*.h)
-FP166_HELPER_SOURCE := runtime/fp166/fpfix.asm
+FP166_CFF48_SOURCE := runtime/fp166/cff48.asm
 
 define FP_VARIANT_RULES
-$$(RUNTIME_WORK)/$(1)-fp166s/fpfix.obj: $$(FP166_HELPER_SOURCE) runtime/render_model_asm.pl \
+$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj: $$(FP166_CFF48_SOURCE) runtime/render_model_asm.pl \
 		$$(RUNTIME_EXTRACTED)
 	mkdir -p $$(@D)
 	cp $$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def $$(@D)/reg.def
-	$$(PERL) runtime/render_model_asm.pl s $$(FP166_HELPER_SOURCE) \
-		$$(@D)/fpfix.asm $(1)
+	$$(PERL) runtime/render_model_asm.pl s $$(FP166_CFF48_SOURCE) \
+		$$(@D)/cff48.asm $(1)
 	cd $$(@D) && WINEDEBUG=-all wine \
 		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
-		fpfix.asm TO fpfix.obj NOPR EXTEND
+		cff48.asm TO cff48.obj NOPR EXTEND
 
 $$(RUNTIME_WORK)/$(1)-fp166s.lib: runtime/patch_fp166s.pl \
-		$$(RUNTIME_WORK)/$(1)-fp166s/fpfix.obj $$(RUNTIME_EXTRACTED)
+		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj $$(RUNTIME_EXTRACTED)
 	$$(PERL) runtime/patch_fp166s.pl \
 		$$(RUNTIME_WORK)/extracted/SourceFiles/lib/$(1)/fp166s.lib \
-		$$(RUNTIME_WORK)/$(1)-fp166s/fpfix.obj $$@
+		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj $$@
 
 lib/$(1)/fp166s.lib: $$(RUNTIME_WORK)/$(1)-fp166s.lib | lib/$(1)
 	cp $$< $$@
