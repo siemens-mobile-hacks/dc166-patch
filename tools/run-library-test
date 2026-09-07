@@ -80,6 +80,14 @@ wine_environment=(
 )
 
 cp "$host_source" "$run_dir/host.c"
+case_c_names=(host.c)
+for case_c in "$case_dir"/*.c; do
+  [[ -e "$case_c" ]] || break
+  case_c_name="$(basename -- "$case_c")"
+  [[ "$case_c" == "$host_source" || "$case_c_name" == host-*.c ]] && continue
+  cp "$case_c" "$run_dir/$case_c_name"
+  case_c_names+=("$case_c_name")
+done
 cp "$project_root/tests/support/control.c" "$run_dir/control.c"
 case_asm_names=()
 case "$memory_model" in
@@ -184,7 +192,7 @@ run_wine() {
     "$compiler_model" "${compiler_architecture[@]}" \
     "${compiler_options[@]}" -gb -ieee -tmp \
     -lib "$(to_windows_path "$library_path")" \
-    -Wo@layout.ilo -o host.abs host.c control.c \
+    -Wo@layout.ilo -o host.abs "${case_c_names[@]}" control.c \
     "${startup_objects[@]}" "${case_objects[@]}"
   if [[ "$runtime_variant" == ext2 ]]; then
     generated_source="$(tr -d '\r' < host.src)"

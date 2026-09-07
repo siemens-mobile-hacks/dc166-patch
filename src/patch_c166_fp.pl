@@ -18,6 +18,12 @@ my $stub_off = 0x00022ce0;
 my $stub_va  = 0x00422ce0;
 my $cave_off = 0x0010e0c0;
 my $cave_va  = 0x0050e0c0;
+my $argument_slot_call_off = 0x000295e3;
+my $argument_slot_call_va  = 0x004295e3;
+my $argument_slot_hook_va  = $cave_va + 0x0f00;
+my $argument_slot_check_call_off = 0x00029ba3;
+my $argument_slot_check_call_va  = 0x00429ba3;
+my $argument_slot_check_hook_va  = $cave_va + 0x0f20;
 
 my @fixed_patches = (
     [0x0000914a,
@@ -31,6 +37,14 @@ my @fixed_patches = (
      'c705707f5b0002000000e903000000909090'],
     [0x00046899, '68c8125100', 'eb17909090'],
     [0x00029537, '0f841e060000', '909090909090'],
+    # Preserve the sign bit when the internal FP value is zero.  The original
+    # float/double serializers explicitly wrote an all-zero exponent word.
+    [0x0008a928,
+     'c6470200c64703005f5e83c40cc390909090909090909090',
+     'c64702008a460ad0c88847035f5e83c40cc3909090909090'],
+    [0x0008aa8d,
+     '5fc6460600c64607005e83c40cc39090909090',
+     'c64606008a470ad0c88846075f5e83c40cc390'],
 );
 
 my $old_stub = pack('H*', '68c8125100680f220000e87197070083c408c3');
@@ -50,6 +64,26 @@ for my $patch (@fixed_patches) {
         unless length($old) == length($new);
     substr($exe, $off, length($new), $new);
 }
+
+my $old_argument_slot_call = pack('H*', 'e8d8acfdff');
+die "unexpected argument slot call bytes\n"
+    unless substr($exe, $argument_slot_call_off,
+                  length($old_argument_slot_call)) eq $old_argument_slot_call;
+my $argument_slot_rel =
+    $argument_slot_hook_va - ($argument_slot_call_va + 5);
+substr($exe, $argument_slot_call_off, length($old_argument_slot_call),
+       "\xE8" . pack('l<', $argument_slot_rel));
+
+my $old_argument_slot_check_call = pack('H*', 'e8e8a8fdff');
+die "unexpected argument slot check call bytes\n"
+    unless substr($exe, $argument_slot_check_call_off,
+                  length($old_argument_slot_check_call)) eq
+           $old_argument_slot_check_call;
+my $argument_slot_check_rel =
+    $argument_slot_check_hook_va - ($argument_slot_check_call_va + 5);
+substr($exe, $argument_slot_check_call_off,
+       length($old_argument_slot_check_call),
+       "\xE8" . pack('l<', $argument_slot_check_rel));
 
 my $rel = $cave_va - ($stub_va + 5);
 my $hook = "\xE9" . pack('l<', $rel) . ("\x90" x (length($old_stub) - 5));

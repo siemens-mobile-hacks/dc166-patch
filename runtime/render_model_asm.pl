@@ -7,7 +7,7 @@ use warnings;
     or die "usage: $0 MODEL INPUT.asm OUTPUT.asm [ext|ext2]\n";
 my ($model, $input, $output, $architecture) = @ARGV;
 $architecture //= 'ext';
-my %name = (t => 'TINY', m => 'MEDIUM', l => 'LARGE', h => 'HUGE');
+my %name = (t => 'TINY', s => 'SMALL', m => 'MEDIUM', l => 'LARGE', h => 'HUGE');
 exists $name{$model} or die "$0: invalid model '$model'\n";
 ($architecture eq 'ext' || $architecture eq 'ext2')
     or die "$0: invalid architecture '$architecture'\n";
@@ -18,7 +18,7 @@ my $source = <$in>;
 close $in or die "$input: $!\n";
 
 $source =~ s/^\$EXTEND\s*$/\$EXTEND2/m if $architecture eq 'ext2';
-$source =~ s/^\$(?:NON)?SEGMENTED\s*$/\$@{[$model eq 't' ? 'NONSEGMENTED' : 'SEGMENTED']}/m;
+$source =~ s/^\$(?:NON)?SEGMENTED\s*$/\$@{[$model eq 't' || $model eq 's' ? 'NONSEGMENTED' : 'SEGMENTED']}/m;
 $source =~ s/^\$MODEL\([^)]*\)\s*$/\$MODEL($name{$model})/m;
 if ($model eq 't' || $model eq 'm') {
     $source =~ s/ PROC FAR\b/ PROC NEAR/g;

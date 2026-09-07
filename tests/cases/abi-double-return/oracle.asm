@@ -13,6 +13,7 @@ ABI_DOUBLE_CODE SECTION CODE WORD PUBLIC 'CPROGRAM'
         PUBLIC  _abi_check_tasking_double_return
 _abi_check_tasking_double_return PROC FAR
         MOV     R1,[R0]
+        SUB     R0,#08h
         MOV     [-R0],R1
         SUB     R0,#08h
         MOV     [R0],R12
@@ -20,6 +21,10 @@ _abi_check_tasking_double_return PROC FAR
         MOV     [R0+#04h],R14
         MOV     [R0+#06h],R15
         CALLS   SEG _tasking_double_identity,_tasking_double_identity
+        MOV     R1,R0
+        ADD     R1,#0Ah
+        CMP     R1,R4
+        JMPR    cc_NZ,abi_callee_pointer
         MOV     R1,[R0]
         MOV     R2,[R4]
         CMP     R1,R2
@@ -49,39 +54,31 @@ abi_callee_word_2:
         JMPR    cc_UC,abi_callee_done
 abi_callee_word_3:
         MOV     R4,#04h
+        JMPR    cc_UC,abi_callee_done
+abi_callee_pointer:
+        MOV     R4,#05h
 abi_callee_done:
-        ADD     R0,#0Ah
+        ADD     R0,#012h
         RETS
 _abi_check_tasking_double_return ENDP
 
         PUBLIC  _abi_r4_only_double_identity
 _abi_r4_only_double_identity PROC FAR
-        SUB     R0,#010h
         MOV     R4,R0
-        MOV     R1,[R0+#010h]
-        MOV     [R4],R1
-        MOV     R1,[R0+#012h]
-        MOV     [R4+#02h],R1
-        MOV     R1,[R0+#014h]
-        MOV     [R4+#04h],R1
-        MOV     R1,[R0+#016h]
-        MOV     [R4+#06h],R1
-        MOV     R10,#0BADh
-        MOV     [R0+#08h],R10
-        MOV     R10,#0F00Dh
-        MOV     [R0+#0Ah],R10
-        MOV     R10,#0A55Ah
-        MOV     [R0+#0Ch],R10
-        MOV     R10,#05AA5h
-        MOV     [R0+#0Eh],R10
-        MOV     R10,R0
-        ADD     R10,#08h
-        ADD     R0,#010h
+        CALLS   SEG __load8n,__load8n
+        MOV     R4,#012h
+        ADD     R4,R0
+        MOV     R11,R4
+        CALLS   SEG __store8n,__store8n
+        MOV     R4,R11
+        ADD     R0,#08h
         RETS
 _abi_r4_only_double_identity ENDP
 
 ABI_DOUBLE_CODE ENDS
 
         EXTERN  _tasking_double_identity:FAR
+        EXTERN  __load8n:FAR
+        EXTERN  __store8n:FAR
         REGDEF  R0-R15
         END

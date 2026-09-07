@@ -5,8 +5,10 @@ Patches and runtime libraries for TASKING C166/ST10 v8.6r1 Build 753.
 Changes:
 
 - removed compiler, linker and debugger demo restrictions;
-- enabled `float`/`double` code generation and fixed their Classic ABI;
-- added `c166`, `fp166` and `rt166` libraries for Tiny, Medium, Large and Huge;
+- enabled `float`/`double` code generation, fixed their Classic ABI and
+  preserved signed zero in constants and `float` to `double` conversion;
+- added `c166` and `rt166` libraries for Tiny, Medium, Large and Huge;
+- added patched `fp166` libraries for Small, Tiny, Medium, Large and Huge;
 - added C167 (`ext`) and Super10 (`ext2`) runtime variants.
 
 Required original installer:
@@ -30,7 +32,8 @@ Generated files:
 
 ```text
 patches/final/{c166,l166,xfw166}.vkp
-lib/{ext,ext2}/{c166,fp166,rt166}{t,m,l,h}.lib
+lib/{ext,ext2}/{c166,rt166}{t,m,l,h}.lib
+lib/{ext,ext2}/fp166{s,t,m,l,h}.lib
 dist/Tasking-C166-8.6r1-patched.exe
 ```
 

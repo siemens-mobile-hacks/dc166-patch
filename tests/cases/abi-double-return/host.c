@@ -28,8 +28,8 @@ static void check_vector(test_u16 base, test_u16 w3, test_u16 w2,
   test_check(base,
              abi_check_tasking_double_return(w3, w2, w1, w0, tail) == 0U);
 
-  /* The assembly callee exposes the result only in R4 and points R10 at a
-     poison block.  This independently verifies the TASKING caller side. */
+  /* The assembly callee exposes the result through the caller-owned block
+     named by R4.  This independently verifies the TASKING caller side. */
   returned.value = abi_r4_only_double_identity(input.value, tail);
   test_check_f64((test_u16)(base + 1U), &returned, w3, w2, w1, w0);
 }

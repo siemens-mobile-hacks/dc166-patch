@@ -29,7 +29,8 @@ RUNTIME_VARIANTS := ext ext2
 MEMORY_MODELS := t m l h
 RUNTIME_LIBS := $(foreach variant,$(RUNTIME_VARIANTS),$(foreach model,$(MEMORY_MODELS),\
 	lib/$(variant)/c166$(model).lib lib/$(variant)/fp166$(model).lib \
-	lib/$(variant)/rt166$(model).lib))
+	lib/$(variant)/rt166$(model).lib)) \
+	$(foreach variant,$(RUNTIME_VARIANTS),lib/$(variant)/fp166s.lib)
 C166_GENERATED_MEMBERS := $(file <runtime/manifests/c166l-generated.modules)
 C166_TINY_EXCLUDED_MEMBERS := $(file <runtime/manifests/c166t-excluded.modules)
 C166_GENERATED_MEMBERS_t := $(filter-out $(C166_TINY_EXCLUDED_MEMBERS),$(C166_GENERATED_MEMBERS))
@@ -38,6 +39,29 @@ C166_GENERATED_MEMBERS_l := $(C166_GENERATED_MEMBERS)
 C166_GENERATED_MEMBERS_h := $(C166_GENERATED_MEMBERS)
 C166_SOURCES := $(wildcard runtime/c166l/*.c runtime/c166l/*.asm)
 C166_HEADERS := $(wildcard runtime/c166l/*.h)
+FP166_HELPER_SOURCE := runtime/fp166/fpfix.asm
+
+define FP_VARIANT_RULES
+$$(RUNTIME_WORK)/$(1)-fp166s/fpfix.obj: $$(FP166_HELPER_SOURCE) runtime/render_model_asm.pl \
+		$$(RUNTIME_EXTRACTED)
+	mkdir -p $$(@D)
+	cp $$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def $$(@D)/reg.def
+	$$(PERL) runtime/render_model_asm.pl s $$(FP166_HELPER_SOURCE) \
+		$$(@D)/fpfix.asm $(1)
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
+		fpfix.asm TO fpfix.obj NOPR EXTEND
+
+$$(RUNTIME_WORK)/$(1)-fp166s.lib: runtime/patch_fp166s.pl \
+		$$(RUNTIME_WORK)/$(1)-fp166s/fpfix.obj $$(RUNTIME_EXTRACTED)
+	$$(PERL) runtime/patch_fp166s.pl \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/lib/$(1)/fp166s.lib \
+		$$(RUNTIME_WORK)/$(1)-fp166s/fpfix.obj $$@
+
+lib/$(1)/fp166s.lib: $$(RUNTIME_WORK)/$(1)-fp166s.lib | lib/$(1)
+	cp $$< $$@
+endef
+$(foreach variant,$(RUNTIME_VARIANTS),$(eval $(call FP_VARIANT_RULES,$(variant))))
 
 .PHONY: all rebuild installer libraries verify clean
 .SECONDARY:
@@ -95,15 +119,16 @@ lib/$$(1)/c166$(1).lib: runtime/build_lib.pl runtime/build_near_lib.sh runtime/a
 	@$$(PERL) runtime/append_lib.pl $$(RUNTIME_WORK)/$$(1)-c166$(1)-imported.lib $$$$@ $(1) \
 		$$(C166_GENERATED_OBJECTS_$(1))
 
-lib/$$(1)/fp166$(1).lib: runtime/build_lib.pl runtime/build_near_lib.sh runtime/manifests/fp166l.modules $$(RUNTIME_EXTRACTED) | lib/$$(1)
+lib/$$(1)/fp166$(1).lib: runtime/build_lib.pl runtime/build_near_lib.sh runtime/manifests/fp166l.modules \
+		$$(RUNTIME_WORK)/$$(1)-fp166s.lib | lib/$$(1)
 	@if [ "$(1)" = t ] || [ "$(1)" = m ]; then \
-		runtime/build_near_lib.sh $$(RUNTIME_WORK)/extracted/SourceFiles/lib/$$(1)/fp166s.lib \
+		runtime/build_near_lib.sh $$(RUNTIME_WORK)/$$(1)-fp166s.lib \
 			runtime/manifests/fp166l.modules $(1) \
 			$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
 			$$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def \
 			$$(RUNTIME_WORK)/$$(1)-fp166$(1) $$$$@; \
 	else \
-		$$(PERL) runtime/build_lib.pl $$(RUNTIME_WORK)/extracted/SourceFiles/lib/$$(1)/fp166s.lib \
+		$$(PERL) runtime/build_lib.pl $$(RUNTIME_WORK)/$$(1)-fp166s.lib \
 			runtime/manifests/fp166l.modules $(1) $$$$@; \
 	fi
 
@@ -197,6 +222,8 @@ verify: all
 	cmp $(L166_PATCHED) $(WORK)/sfx-verify/payload/l166-patched.exe
 	cmp $(XFW166_PATCHED) $(WORK)/sfx-verify/payload/xfw166-patched.exe
 	@for variant in $(RUNTIME_VARIANTS); do \
+		cmp lib/$$variant/fp166s.lib \
+			$(WORK)/sfx-verify/payload/lib/$$variant/fp166s.lib || exit 1; \
 		for model in $(MEMORY_MODELS); do for family in c166 fp166 rt166; do \
 			library=$$family$$model.lib; \
 			cmp lib/$$variant/$$library \

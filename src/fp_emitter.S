@@ -10,6 +10,7 @@
 	.equ emit_ir,         0x00425320
 	.equ reserve_location,0x00406850
 	.equ alloc_stack_owner,0x004042c0
+	.equ stack_owner_size,0x00404490
 	.equ emit_assign,     0x0042efb0
 	.equ emit_compound,   0x0045df50
 	.equ finalize_expr,   0x00426970
@@ -19,8 +20,12 @@
 	.equ emit_deref,      0x004395c0
 	.equ transfer_owner,  0x004187e0
 	.equ release_owner,   0x00418800
+	.equ current_function,0x00408f70
+	.equ make_return_copy,0x00418850
+	.equ free_node_tree,  0x0049ee20
 	.equ free_temp_node,  0x00419e50
 	.equ fatal_error,     0x0049c460
+	.equ memory_model,    0x005b644c
 
 	/* Classic c166 internal locations, confirmed in the existing emitters. */
 	.equ WANT_PAIR,       0x00060040
@@ -327,30 +332,81 @@ fp_emitter:
 	jmp .Ldone
 
 .Ldouble_return:
-	/* The public Classic ABI returns a double in a user-stack block and
-	   publishes that block through R4.  Keep the internal R10-owned block,
-	   but require the return expression to expose its pointer in R4 before
-	   the generic function epilogue is emitted. */
-	push REG_R4_WORD
-	push WANT_DBL_RESULT
+	/* Reuse the aggregate-return path to materialize the value in the
+	   caller-owned result slot.  Returning the internal R10 block would leave
+	   R4 pointing below the restored user stack. */
+	mov eax, dword ptr [esi + 0x08]
+	mov edi, dword ptr [eax + 0x24]
+	call current_function
+	push eax
+	push dword ptr [esi + 0x0c]
+	call make_return_copy
+	add esp, 8
+	mov ebx, eax
+
+	push REG_R10_WORD
+	push WANT_DBL_R10
 	push dword ptr [esi + 0x0c]
 	call emit_node
 	add esp, 12
-	.ifdef PROBE_RESULT_LOCATION
-	mov eax, dword ptr [esi + 0x0c]
-	mov eax, dword ptr [eax + 0x14]
-	and eax, 0x00ffffff
-	or eax, 0xdb000000
-	mov dword ptr [eax], eax
-	.endif
-	mov ebx, dword ptr [esi + 0x0c]
-	push dword ptr [ebx + 0x14]
+
+	mov eax, 0x00410008
+	cmp dword ptr [memory_model], 2
+	jl .Ldouble_return_address
+	mov eax, 0x004d0008
+.Ldouble_return_address:
+	push REG_R4_WORD
+	push eax
+	push dword ptr [ebx + 0x08]
+	call move_result
+	add esp, 12
+
+	/* __store8n advances and clobbers R4.  Keep the published result pointer
+	   in R11, which the store helper preserves. */
+	push 0
+	push REG_R4_WORD
+	push 0
+	push REG_R11_WORD
+	push 0
+	push 0x2d
+	call emit_ir
+	add esp, 24
+
+	push RTL_STORE8N
+	call emit_rt_helper
+	add esp, 4
+
+	push 0
+	push REG_R11_WORD
+	push 0
+	push REG_R4_WORD
+	push 0
+	push 0x2d
+	call emit_ir
+	add esp, 24
+
+	push dword ptr [esi + 0x0c]
+	call release_owner
+	add esp, 4
+
+	mov eax, dword ptr [ebx + 0x08]
+	cmp dword ptr [eax + 0x14], 0
+	je .Ldouble_return_free_tree
+	push eax
+	call free_temp_node
+	add esp, 4
+.Ldouble_return_free_tree:
+	mov dword ptr [ebx + 0x0c], 0
+	push ebx
+	call free_node_tree
+	add esp, 4
+
+	push REG_R4_WORD
+	call reserve_location
+	add esp, 4
+	push RESULT_DBL_R4
 	push esi
 	call record_result
-	add esp, 8
-	push ebx
-	push esi
-	call transfer_owner
 	add esp, 8
 	jmp .Ldone
 
@@ -1042,4 +1098,31 @@ fp_emitter:
 	pop esi
 	pop ebx
 	leave
+	ret
+
+	/* Stack-passed objects occupy whole words even when a packed aggregate
+	   has an odd byte size.  Keep the original byte count for the copy itself
+	   and round only the allocation recorded by the call emitter. */
+	.org 0x0f00, 0
+	.global alloc_argument_stack_slot
+alloc_argument_stack_slot:
+	mov eax, dword ptr [esp + 4]
+	inc eax
+	and eax, -2
+	push dword ptr [esp + 8]
+	push eax
+	call alloc_stack_owner
+	add esp, 8
+	ret
+
+	.org 0x0f20, 0
+	.global argument_stack_slot_size_for_check
+argument_stack_slot_size_for_check:
+	push dword ptr [esp + 4]
+	call stack_owner_size
+	add esp, 4
+	test ebp, 1
+	jz 1f
+	dec eax
+1:
 	ret

@@ -56,6 +56,10 @@ for %%V in (ext ext2) do for %%M in (t m l h) do for %%F in (c166 fp166 rt166) d
   copy /b /y "%ROOT%payload\lib\%%V\%%F%%M.lib" "%INSTALL_DIR%\lib\%%V\%%F%%M.lib" >nul
   if errorlevel 1 goto copy_failed
 )
+for %%V in (ext ext2) do (
+  copy /b /y "%ROOT%payload\lib\%%V\fp166s.lib" "%INSTALL_DIR%\lib\%%V\fp166s.lib" >nul
+  if errorlevel 1 goto copy_failed
+)
 
 echo.
 echo TASKING C166 v8.6r1 patched successfully.

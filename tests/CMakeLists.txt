@@ -63,6 +63,21 @@ foreach(variant IN ITEMS ext ext2)
   endforeach()
 endforeach()
 
+foreach(variant IN ITEMS ext ext2)
+  set(test_name "runtime.symbol-audit.${variant}.fp166s")
+  add_test(
+    NAME "${test_name}"
+    COMMAND "${PERL_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/runtime/audit_libc_symbols.pl"
+            "${DC166_RUNTIME_WORK}/extracted/SourceFiles/lib/${variant}/fp166s.lib"
+            "${PROJECT_SOURCE_DIR}/lib/${variant}/fp166s.lib"
+  )
+  set_tests_properties("${test_name}" PROPERTIES
+    LABELS "runtime;static;symbols;${variant};s;fp166"
+    TIMEOUT 15
+  )
+endforeach()
+
 function(add_runtime_iss_test variant model case_name)
   set(optimization "O0")
   set(test_suffix "")
@@ -146,17 +161,31 @@ foreach(variant IN ITEMS ext ext2)
   endforeach()
 endforeach()
 
-# Bidirectional assembly oracles prevent TASKING caller/callee conventions
-# from hiding the same mistake on both sides of a C-to-C call.
+# Exercise public double-return ABI paths at every optimization level.
+# The return case is bidirectional; the conversion case uses separate C
+# translation units so the ABI boundary cannot be optimized away.
 foreach(variant IN ITEMS ext ext2)
   foreach(model IN ITEMS tiny medium large huge)
     foreach(optimization IN ITEMS O0 O1 O2 O3 Os Oz)
       add_runtime_iss_test("${variant}" "${model}" "abi-double-return"
                            "${optimization}")
+      add_runtime_iss_test("${variant}" "${model}"
+                           "abi-double-conversion-return" "${optimization}")
+      add_runtime_iss_test("${variant}" "${model}"
+                           "abi-packed-aggregate-arguments" "${optimization}")
+      add_runtime_iss_test("${variant}" "${model}" "fp-signed-zero"
+                           "${optimization}")
       add_runtime_iss_test("${variant}" "${model}" "fp-expression-chain"
                            "${optimization}")
     endforeach()
   endforeach()
+endforeach()
+
+foreach(optimization IN ITEMS O0 O1 O2 O3 Os Oz)
+  add_runtime_iss_test("ext" "small" "abi-double-conversion-return"
+                       "${optimization}")
+  add_runtime_iss_test("ext" "small" "abi-packed-aggregate-arguments"
+                       "${optimization}")
 endforeach()
 
 # Original Small is retained as a behavior oracle for the reconstructed libc.
