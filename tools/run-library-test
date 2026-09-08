@@ -12,6 +12,7 @@ case_name="$2"
 wine_prefix="${WINEPREFIX:-$HOME/.wine}"
 tasking_root="${TASKING_C166_ROOT:-$wine_prefix/drive_c/Program Files (x86)/TASKING/dc166 v8.6}"
 debugger="${DC166_DEBUGGER:-$tasking_root/bin/xfw166.exe}"
+debug_instrument_module="${DC166_DEBUG_INSTRUMENT_MODULE:-disim166}"
 iss_root="${DC166_ISS_ROOT:-/tmp/codex/dc166-iss}"
 runtime_work="${DC166_RUNTIME_WORK:-$project_root/build/runtime}"
 runtime_variant="${DC166_RUNTIME_VARIANT:-ext}"
@@ -135,6 +136,8 @@ if [[ "$runtime_variant" == ext2 ]]; then
   compiler_architecture=(-x2)
 fi
 cp "$tasking_root/etc/$target_config" "$run_dir/unit-target.cfg"
+sed -i -E "s/^(debug_instrument_module:[[:space:]]*).*/\\1${debug_instrument_module}/" \
+  "$run_dir/unit-target.cfg"
 cp "$tasking_root/etc/xvw.ini" "$run_dir/xvw.ini"
 "$project_root/tools/configure-crossview-headless" "$run_dir/xvw.ini"
 cp "$project_root/tests/support/session.cmd" "$run_dir/session.cmd"

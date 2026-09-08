@@ -11,6 +11,8 @@ Changes:
 - added `c166` and `rt166` libraries for Tiny, Medium, Large and Huge;
 - added patched `fp166` libraries for Small, Tiny, Medium, Large and Huge;
 - added C167 (`ext`) and Super10 (`ext2`) runtime variants.
+- fixed CrossView ISS handling of byte writes to SFRs, CSP reads after
+  `RETI`/`RETS`, and PEC transfers at the end of `ATOMIC` windows.
 
 Required original installer:
 
@@ -32,7 +34,7 @@ make clean
 Generated files:
 
 ```text
-patches/final/{c166,l166,xfw166}.vkp
+patches/final/{c166,l166,xfw166,disim166}.vkp
 lib/{ext,ext2}/{c166,rt166}{t,m,l,h}.lib
 lib/{ext,ext2}/fp166{s,t,m,l,h}.lib
 dist/Tasking-C166-8.6r1-patched.exe

@@ -93,6 +93,7 @@ function(add_runtime_iss_test variant model case_name)
             "DC166_RUNTIME_VARIANT=${variant}"
             "DC166_RUNTIME_WORK=${DC166_RUNTIME_WORK}"
             "DC166_DEBUGGER=${DC166_RUNTIME_WORK}/extracted/SourceFiles/bin/xfw166-patched.exe"
+            "DC166_DEBUG_INSTRUMENT_MODULE=disim166-patched"
             "DC166_COMPILER_OPTIMIZATION=${optimization}"
             "${PROJECT_SOURCE_DIR}/tools/run-library-test"
             "${CMAKE_CURRENT_SOURCE_DIR}/cases/${case_name}"
