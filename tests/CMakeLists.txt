@@ -106,6 +106,10 @@ function(add_runtime_iss_test variant model case_name)
   )
 endfunction()
 
+foreach(variant IN ITEMS ext ext2)
+  add_runtime_iss_test("${variant}" "large" "iss-code-segment-boundaries")
+endforeach()
+
 # A case may provide host-<model>.c when one model needs different source.
 set(runtime_all_model_cases
   fp-arithmetic

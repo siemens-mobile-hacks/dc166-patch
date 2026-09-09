@@ -10,9 +10,10 @@ Changes:
   subnormal values, infinities and NaNs;
 - added `c166` and `rt166` libraries for Tiny, Medium, Large and Huge;
 - added patched `fp166` libraries for Small, Tiny, Medium, Large and Huge;
-- added C167 (`ext`) and Super10 (`ext2`) runtime variants.
+- added C167 (`ext`) and Super10 (`ext2`) runtime variants;
 - fixed CrossView ISS handling of byte writes to SFRs, CSP reads after
-  `RETI`/`RETS`, and PEC transfers at the end of `ATOMIC` windows.
+  `RETI`/`RETS`, PEC transfers at the end of `ATOMIC` windows, and branches
+  ending at a code-segment boundary.
 
 Required original installer:
 
