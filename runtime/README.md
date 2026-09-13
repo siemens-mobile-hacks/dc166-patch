@@ -1,8 +1,8 @@
 # Runtime libraries
 
-The build creates TASKING Classic `c166` and `rt166` libraries for Tiny (`t`),
-Medium (`m`), Large (`l`) and Huge (`h`), and `fp166` libraries for Small
-(`s`) through Huge, in both `ext` variants:
+The build creates TASKING Classic `c166` libraries for Tiny (`t`), Medium
+(`m`), Large (`l`) and Huge (`h`), plus `rt166` and `fp166` libraries for
+Small (`s`) through Huge, in both `ext` variants:
 
 - `fp166?.lib`: floating-point arithmetic, conversions, comparisons and
   double load/store helpers.
@@ -12,8 +12,8 @@ Medium (`m`), Large (`l`) and Huge (`h`), and `fp166` libraries for Small
   narrow and wide stdio, formatted I/O and CrossView FSS calls.
 
 Tiny and Medium use native NEAR entry points. Their adapters call the original
-FAR helper bodies without changing the compiler ABI. Large and Huge use FAR
-entry points. Model-specific libc modules are compiled with the matching
+FAR helper bodies without changing the compiler ABI. Small, Large and Huge use
+FAR entry points. Model-specific libc modules are compiled with the matching
 `-Mt`, `-Mm`, `-Ml` or `-Mh` option. Tiny omits explicit far/huge-only APIs;
 Huge `malloc` may cross 16-KiB pages.
 

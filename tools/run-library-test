@@ -162,6 +162,7 @@ if [[ "$memory_model" == small ]]; then
   mkdir -p "$library_path"
   cp "$original_small_lib/"*.lib "$library_path/"
   cp "$project_root/lib/$runtime_variant/fp166s.lib" "$library_path/fp166s.lib"
+  cp "$project_root/lib/$runtime_variant/rt166s.lib" "$library_path/rt166s.lib"
 else
   library_path="$project_root/lib/$runtime_variant"
 fi

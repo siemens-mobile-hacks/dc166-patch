@@ -45,6 +45,11 @@ my @fixed_patches = (
     [0x0008aa8d,
      '5fc6460600c64607005e83c40cc39090909090',
      'c64606008a470ad0c88846075f5e83c40cc390'],
+    # The compiler marks __loadlh unavailable for the near-pointer models.
+    # Enable the same input/clobber masks used by the paged models.
+    [0x001283d8,
+     '00003000300030003000ffff',
+     '30003000300030003000300c'],
 );
 
 my $old_stub = pack('H*', '68c8125100680f220000e87197070083c408c3');

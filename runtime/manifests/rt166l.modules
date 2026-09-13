@@ -31,7 +31,6 @@ cassrlf.obj
 cassrlh.obj
 causrlf.obj
 causrlh.obj
-loadlh.obj
 storelh.obj
 pinclh.obj
 pdeclh.obj

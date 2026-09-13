@@ -35,6 +35,7 @@
 	.equ RESULT_R4_R5,    0x000640a8
 	.equ REG_R4_WORD,     0x00001008
 	.equ REG_R5_WORD,     0x0000100a
+	.equ REG_R6_WORD,     0x0000100c
 	.equ REG_R10_WORD,    0x00001014
 	.equ REG_R11_WORD,    0x00001016
 	.equ REG_R14_WORD,    0x0000101c
@@ -204,19 +205,67 @@ fp_emitter:
 	jnz .Lderef_lvalue
 	mov eax, dword ptr [esi + 0x14]
 	and eax, 0x000f0000
+	cmp eax, 0x00010000
+	je .Lderef_near
 	cmp eax, 0x00040000
-	je .Lderef_far
+	je .Lderef_promote
 	cmp eax, 0x00050000
 	je .Lderef_huge
 	cmp eax, 0x00080000
 	jne .Lderef_generic
 
-	/* A dynamic Far/Huge-address float dereference cannot use the generic emitter:
+	/* A dynamic Near/Far/Huge-address float dereference cannot use the generic emitter:
 	   it redispatches the same float node indefinitely.  Materialize its linear
 	   address and use the matching ordinary 32-bit load helper. */
-.Lderef_far:
+.Lderef_near:
+	mov eax, dword ptr [esi + 0x08]
+	cmp byte ptr [esi], 0x1f
+	jne .Lderef_near_have_addr
+	mov eax, dword ptr [esi + 0x0c]
+.Lderef_near_have_addr:
+	push REG_R4_WORD
+	push WANT_NEAR_PTR
+	push eax
+	call emit_node
+	add esp, 12
+
+	/* Preserve R5 around the marker.  emit_ir performs the same register move
+	   bookkeeping used elsewhere in this emitter. */
+	push 0
+	push REG_R5_WORD
+	push 0
+	push REG_R6_WORD
+	push 0
+	push 0x2d
+	call emit_ir
+	add esp, 24
+
+	push 0xffff
+	push CONST_VALUE
+	push 0
+	push REG_R5_WORD
+	push 0
+	push 0x2d
+	call emit_ir
+	add esp, 24
+
+	push RTL_LOADLH
+	call emit_rt_helper
+	add esp, 4
+
+	push 0
+	push REG_R6_WORD
+	push 0
+	push REG_R5_WORD
+	push 0
+	push 0x2d
+	call emit_ir
+	add esp, 24
+	jmp .Lderef_after_load
+
+.Lderef_promote:
 	/* __loadlh consumes a Huge segment:offset pointer.  Ask the regular
-	   address emitter to convert the Far page:offset value first. */
+	   address emitter to convert the Far pointer first. */
 	mov ecx, 0x00050040
 	jmp .Lderef_wide
 .Lderef_huge:
@@ -238,6 +287,7 @@ fp_emitter:
 	push RTL_LOADLH
 	call emit_rt_helper
 	add esp, 4
+.Lderef_after_load:
 	push REG_R10_R11
 	call reserve_location
 	add esp, 4

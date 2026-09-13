@@ -21,6 +21,7 @@ test -f "$xfw166_patched"
 test -f "$disim166_patched"
 for variant in ext ext2; do
     test -f "$runtime_lib_root/$variant/fp166s.lib"
+    test -f "$runtime_lib_root/$variant/rt166s.lib"
     for model in t m l h; do
         for family in c166 fp166 rt166; do
             test -f "$runtime_lib_root/$variant/$family$model.lib"

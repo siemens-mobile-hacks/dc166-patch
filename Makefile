@@ -33,7 +33,8 @@ MEMORY_MODELS := t m l h
 RUNTIME_LIBS := $(foreach variant,$(RUNTIME_VARIANTS),$(foreach model,$(MEMORY_MODELS),\
 	lib/$(variant)/c166$(model).lib lib/$(variant)/fp166$(model).lib \
 	lib/$(variant)/rt166$(model).lib)) \
-	$(foreach variant,$(RUNTIME_VARIANTS),lib/$(variant)/fp166s.lib)
+	$(foreach variant,$(RUNTIME_VARIANTS),lib/$(variant)/fp166s.lib \
+	lib/$(variant)/rt166s.lib)
 C166_GENERATED_MEMBERS := $(file <runtime/manifests/c166l-generated.modules)
 C166_TINY_EXCLUDED_MEMBERS := $(file <runtime/manifests/c166t-excluded.modules)
 C166_GENERATED_MEMBERS_t := $(filter-out $(C166_TINY_EXCLUDED_MEMBERS),$(C166_GENERATED_MEMBERS))
@@ -48,6 +49,7 @@ FP166_F32_SOURCE := runtime/fp166/fp32.c
 FP166_F32_WRAPPERS := adf4 mlf4 dvf4 cif44
 FP166_F64_SOURCE := runtime/fp166/fp64.c
 FP166_F64_WRAPPERS := adf8 mlf8 dvf8 cfi82 cfu82 cfi84 cfu84 cif48
+RT166_LOADLH_SOURCE := runtime/rt166/loadlh.asm
 
 define FP_VARIANT_RULES
 $$(RUNTIME_WORK)/$(1)-fp166s/fp32.obj: $$(FP166_F32_SOURCE) \
@@ -134,6 +136,29 @@ lib/$(1)/fp166s.lib: $$(RUNTIME_WORK)/$(1)-fp166s.lib | lib/$(1)
 endef
 $(foreach variant,$(RUNTIME_VARIANTS),$(eval $(call FP_VARIANT_RULES,$(variant))))
 
+define RT_LOADLH_RULE
+$$(RUNTIME_WORK)/$(1)-rt166$(2)-loadlh/loadlh.obj: $$(RT166_LOADLH_SOURCE) \
+		runtime/render_model_asm.pl $$(RUNTIME_EXTRACTED)
+	mkdir -p $$(@D)
+	cp $$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def $$(@D)/reg.def
+	$$(PERL) runtime/render_model_asm.pl $(2) $$(RT166_LOADLH_SOURCE) \
+		$$(@D)/loadlh.asm $(1)
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
+		loadlh.asm TO loadlh.obj NOPR $(if $(filter ext2,$(1)),EXTEND2,EXTEND)
+endef
+$(foreach variant,$(RUNTIME_VARIANTS),$(foreach model,s $(MEMORY_MODELS),\
+	$(eval $(call RT_LOADLH_RULE,$(variant),$(model)))))
+
+define RT_SMALL_VARIANT_RULE
+lib/$(1)/rt166s.lib: runtime/replace_lib_member.pl \
+		$$(RUNTIME_WORK)/$(1)-rt166s-loadlh/loadlh.obj $$(RUNTIME_EXTRACTED) | lib/$(1)
+	$$(PERL) runtime/replace_lib_member.pl \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/lib/$(1)/rt166s.lib \
+		loadlh.obj $$(RUNTIME_WORK)/$(1)-rt166s-loadlh/loadlh.obj $$@
+endef
+$(foreach variant,$(RUNTIME_VARIANTS),$(eval $(call RT_SMALL_VARIANT_RULE,$(variant))))
+
 .PHONY: all rebuild installer libraries verify clean
 .SECONDARY:
 
@@ -215,7 +240,9 @@ $$(RUNTIME_WORK)/rt166$(1)-startup/$$(1)/.stamp: runtime/build_rt166l_startup.sh
 		$$(RUNTIME_WORK)/rt166$(1)-startup/$$(1)/cstart.obj $$$$@
 
 lib/$$(1)/rt166$(1).lib: runtime/build_lib.pl runtime/build_near_lib.sh runtime/append_lib.pl \
-		runtime/manifests/rt166l.modules $$(RUNTIME_WORK)/rt166$(1)-startup/$$(1)/.stamp $$(RUNTIME_EXTRACTED) | lib/$$(1)
+		runtime/manifests/rt166l.modules \
+		$$(RUNTIME_WORK)/$$(1)-rt166$(1)-loadlh/loadlh.obj \
+		$$(RUNTIME_WORK)/rt166$(1)-startup/$$(1)/.stamp $$(RUNTIME_EXTRACTED) | lib/$$(1)
 	@if [ "$(1)" = t ] || [ "$(1)" = m ]; then \
 		runtime/build_near_lib.sh $$(RUNTIME_WORK)/extracted/SourceFiles/lib/$$(1)/rt166s.lib \
 			runtime/manifests/rt166l.modules $(1) \
@@ -228,6 +255,7 @@ lib/$$(1)/rt166$(1).lib: runtime/build_lib.pl runtime/build_near_lib.sh runtime/
 			runtime/manifests/rt166l.modules $(1) $$(RUNTIME_WORK)/$$(1)-rt166$(1)-imported.lib; \
 	fi
 	$$(PERL) runtime/append_lib.pl $$(RUNTIME_WORK)/$$(1)-rt166$(1)-imported.lib $$$$@ $(1) \
+		$$(RUNTIME_WORK)/$$(1)-rt166$(1)-loadlh/loadlh.obj \
 		$$(RUNTIME_WORK)/rt166$(1)-startup/$$(1)/cstart.obj
 endef
 $$(foreach variant,$$(RUNTIME_VARIANTS),$$(eval $$(call VARIANT_RULES_$(1),$$(variant))))
@@ -308,6 +336,8 @@ verify: all
 	@for variant in $(RUNTIME_VARIANTS); do \
 		cmp lib/$$variant/fp166s.lib \
 			$(WORK)/sfx-verify/payload/lib/$$variant/fp166s.lib || exit 1; \
+		cmp lib/$$variant/rt166s.lib \
+			$(WORK)/sfx-verify/payload/lib/$$variant/rt166s.lib || exit 1; \
 		for model in $(MEMORY_MODELS); do for family in c166 fp166 rt166; do \
 			library=$$family$$model.lib; \
 			cmp lib/$$variant/$$library \

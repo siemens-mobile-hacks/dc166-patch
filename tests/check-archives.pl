@@ -71,7 +71,7 @@ for my $variant (qw(ext ext2)) {
                 @expected = grep { !$unsupported{$_} } @expected;
             }
         } elsif ($family eq 'rt166') {
-            push @expected, 'cstart.obj';
+            push @expected, 'loadlh.obj', 'cstart.obj';
         }
         my @members = archive_members($archive);
         my @actual = map { $_->[0] } @members;
@@ -101,6 +101,14 @@ for my $variant (qw(ext ext2)) {
         }
     }
   }
+
+  my $small_rt = File::Spec->catfile(
+      $root, 'lib', $variant, 'rt166s.lib');
+  my @small_loadlh = grep { $_->[0] eq 'loadlh.obj' }
+                     archive_members($small_rt);
+  @small_loadlh == 1 or die "$small_rt: expected one loadlh.obj\n";
+  index($small_loadlh[0]->[1], $tags{s}) >= 0
+      or die "$small_rt(loadlh.obj): Small model tag missing\n";
 }
 
 print "archive audit passed\n";

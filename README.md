@@ -9,8 +9,10 @@ Changes:
   expressions, fixed their Classic ABI, IEEE add/subtract/multiply/divide,
   integer conversions and `float`/`double` width conversions, including
   signed zero, subnormal values, round-to-nearest-even, infinities and NaNs,
-  and fixed indexed `float` loads in Huge model;
-- added `c166` and `rt166` libraries for Tiny, Medium, Large and Huge;
+  and fixed volatile FP loads, stores and compound assignments in every
+  memory model;
+- added `c166` libraries for Tiny, Medium, Large and Huge;
+- added patched `rt166` libraries for Small, Tiny, Medium, Large and Huge;
 - added patched `fp166` libraries for Small, Tiny, Medium, Large and Huge;
 - added C167 (`ext`) and Super10 (`ext2`) runtime variants;
 - fixed CrossView ISS handling of byte writes to SFRs, CSP reads after
@@ -38,7 +40,8 @@ Generated files:
 
 ```text
 patches/final/{c166,l166,xfw166,disim166}.vkp
-lib/{ext,ext2}/{c166,rt166}{t,m,l,h}.lib
+lib/{ext,ext2}/c166{t,m,l,h}.lib
+lib/{ext,ext2}/rt166{s,t,m,l,h}.lib
 lib/{ext,ext2}/fp166{s,t,m,l,h}.lib
 dist/Tasking-C166-8.6r1-patched.exe
 ```

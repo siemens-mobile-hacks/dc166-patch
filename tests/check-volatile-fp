@@ -36,7 +36,7 @@ to_windows_path() {
   printf 'Z:%s\n' "$1"
 }
 
-for model in m l; do
+for model in t s m l h; do
   for optimization in 0 1 2 3 s z; do
     output="$run_dir/${model}-${optimization}.src"
     log="$run_dir/${model}-${optimization}.log"
@@ -52,8 +52,14 @@ for model in m l; do
       echo "check-volatile-fp: no output for -M$model -O$optimization" >&2
       exit 1
     }
-    for symbol in _evaluate_float _evaluate_double __loadlh __load8f \
-                  __store8f __adf4r __adf8r; do
+    case "$model" in
+      t|s) width_suffix=n ;;
+      m|l) width_suffix=f ;;
+      h) width_suffix=h ;;
+    esac
+    for symbol in _evaluate_float _evaluate_double __loadlh \
+                  "__load8$width_suffix" "__store8$width_suffix" \
+                  __adf4r __adf8r; do
       grep -Fq "$symbol" "$output" || {
         echo "check-volatile-fp: $symbol missing for -M$model -O$optimization" >&2
         exit 1

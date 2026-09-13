@@ -77,18 +77,20 @@ foreach(variant IN ITEMS ext ext2)
 endforeach()
 
 foreach(variant IN ITEMS ext ext2)
-  set(test_name "runtime.symbol-audit.${variant}.fp166s")
-  add_test(
-    NAME "${test_name}"
-    COMMAND "${PERL_EXECUTABLE}"
-            "${PROJECT_SOURCE_DIR}/runtime/audit_libc_symbols.pl"
-            "${DC166_RUNTIME_WORK}/extracted/SourceFiles/lib/${variant}/fp166s.lib"
-            "${PROJECT_SOURCE_DIR}/lib/${variant}/fp166s.lib"
-  )
-  set_tests_properties("${test_name}" PROPERTIES
-    LABELS "runtime;static;symbols;${variant};s;fp166"
-    TIMEOUT 15
-  )
+  foreach(family IN ITEMS fp166 rt166)
+    set(test_name "runtime.symbol-audit.${variant}.${family}s")
+    add_test(
+      NAME "${test_name}"
+      COMMAND "${PERL_EXECUTABLE}"
+              "${PROJECT_SOURCE_DIR}/runtime/audit_libc_symbols.pl"
+              "${DC166_RUNTIME_WORK}/extracted/SourceFiles/lib/${variant}/${family}s.lib"
+              "${PROJECT_SOURCE_DIR}/lib/${variant}/${family}s.lib"
+    )
+    set_tests_properties("${test_name}" PROPERTIES
+      LABELS "runtime;static;symbols;${variant};s;${family}"
+      TIMEOUT 15
+    )
+  endforeach()
 endforeach()
 
 function(add_runtime_iss_test variant model case_name)
@@ -122,7 +124,7 @@ endfunction()
 foreach(variant IN ITEMS ext ext2)
   add_runtime_iss_test("${variant}" "large" "iss-code-segment-boundaries")
   add_runtime_iss_test("${variant}" "huge" "fp-huge-indexed-load" "O2")
-  foreach(model IN ITEMS medium large)
+  foreach(model IN ITEMS tiny small medium large huge)
     add_runtime_iss_test("${variant}" "${model}" "fp-volatile" "O2")
   endforeach()
   foreach(model IN ITEMS tiny small medium large huge)
@@ -235,7 +237,7 @@ foreach(variant IN ITEMS ext ext2)
   endforeach()
 endforeach()
 
-# Small keeps the original c166/rt libraries and uses the patched fp166s.
+# Small keeps the original c166 library and uses the patched fp166s/rt166s.
 set(runtime_small_oracle_cases
   libc-casecmp
   libc-explicit-near-allocation
