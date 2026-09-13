@@ -108,6 +108,10 @@ endfunction()
 
 foreach(variant IN ITEMS ext ext2)
   add_runtime_iss_test("${variant}" "large" "iss-code-segment-boundaries")
+  add_runtime_iss_test("${variant}" "huge" "fp-huge-indexed-load" "O2")
+  foreach(model IN ITEMS tiny small medium large huge)
+    add_runtime_iss_test("${variant}" "${model}" "fp-f64-to-f32" "O2")
+  endforeach()
 endforeach()
 
 # A case may provide host-<model>.c when one model needs different source.

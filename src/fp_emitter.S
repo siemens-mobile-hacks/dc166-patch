@@ -37,6 +37,7 @@
 	.equ REG_R10_WORD,    0x00001014
 	.equ REG_R11_WORD,    0x00001016
 	.equ CONST_VALUE,     0x0000002a
+	.equ RESULT_R10_R11,  0x00064174
 	.equ WANT_DBL_R11,    0x000b0008
 	.equ WANT_DBL_R10,    0x000c0008
 	.equ WANT_DBL_RESULT, 0x200b0008
@@ -61,6 +62,7 @@
 	.equ RTL_STORE8N,     0x0000104f
 	.equ RTL_STORE8F,     0x0000204f
 	.equ RTL_STORE8H,     0x0000404f
+	.equ RTL_LOADLH,      0x0000400f
 
 fp_emitter:
 	.ifdef DEBUG_BREAK
@@ -192,6 +194,64 @@ fp_emitter:
 .Lderef:
 	test edi, 0x00400000
 	jnz .Lderef_lvalue
+	mov eax, dword ptr [esi + 0x14]
+	and eax, 0x000f0000
+	cmp eax, 0x00050000
+	je .Lderef_huge
+	cmp eax, 0x00080000
+	jne .Lderef_generic
+
+	/* A dynamic Huge-address float dereference cannot use the generic emitter:
+	   it redispatches the same float node indefinitely.  Materialize its linear
+	   address and use the ordinary 32-bit Huge load helper. */
+.Lderef_huge:
+	mov eax, dword ptr [esi + 0x08]
+	cmp byte ptr [esi], 0x1f
+	jne .Lderef_huge_have_addr
+	mov eax, dword ptr [esi + 0x0c]
+.Lderef_huge_have_addr:
+	mov ecx, dword ptr [esi + 0x14]
+	and ecx, 0x000f0000
+	or ecx, 0x40
+	push REG_R4_R5
+	push ecx
+	push eax
+	call emit_node
+	add esp, 12
+
+	push RTL_LOADLH
+	call emit_rt_helper
+	add esp, 4
+	push REG_R10_R11
+	call reserve_location
+	add esp, 4
+	push RESULT_R10_R11
+	push esi
+	call record_result
+	add esp, 8
+
+	mov eax, dword ptr [esi + 0x08]
+	cmp byte ptr [esi], 0x1f
+	jne .Lderef_huge_release
+	mov eax, dword ptr [esi + 0x0c]
+.Lderef_huge_release:
+	push eax
+	push 0
+	push eax
+	call record_result
+	add esp, 8
+	call release_owner
+	add esp, 4
+
+	test edi, edi
+	jz .Ldone
+	push ebx
+	push edi
+	push esi
+	call move_result
+	add esp, 12
+	jmp .Ldone
+.Lderef_generic:
 	push ebx
 	push edi
 	push esi

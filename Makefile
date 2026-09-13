@@ -43,6 +43,7 @@ C166_GENERATED_MEMBERS_h := $(C166_GENERATED_MEMBERS)
 C166_SOURCES := $(wildcard runtime/c166l/*.c runtime/c166l/*.asm)
 C166_HEADERS := $(wildcard runtime/c166l/*.h)
 FP166_CFF48_SOURCE := runtime/fp166/cff48.asm
+FP166_CFF84_SOURCE := runtime/fp166/cff84.asm
 
 define FP_VARIANT_RULES
 $$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj: $$(FP166_CFF48_SOURCE) runtime/render_model_asm.pl \
@@ -55,11 +56,23 @@ $$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj: $$(FP166_CFF48_SOURCE) runtime/render_mo
 		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
 		cff48.asm TO cff48.obj NOPR EXTEND
 
+$$(RUNTIME_WORK)/$(1)-fp166s/cff84.obj: $$(FP166_CFF84_SOURCE) runtime/render_model_asm.pl \
+		$$(RUNTIME_EXTRACTED)
+	mkdir -p $$(@D)
+	cp $$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def $$(@D)/reg.def
+	$$(PERL) runtime/render_model_asm.pl s $$(FP166_CFF84_SOURCE) \
+		$$(@D)/cff84.asm $(1)
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
+		cff84.asm TO cff84.obj NOPR EXTEND
+
 $$(RUNTIME_WORK)/$(1)-fp166s.lib: runtime/patch_fp166s.pl \
-		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj $$(RUNTIME_EXTRACTED)
+		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cff84.obj $$(RUNTIME_EXTRACTED)
 	$$(PERL) runtime/patch_fp166s.pl \
 		$$(RUNTIME_WORK)/extracted/SourceFiles/lib/$(1)/fp166s.lib \
-		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj $$@
+		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cff84.obj $$@
 
 lib/$(1)/fp166s.lib: $$(RUNTIME_WORK)/$(1)-fp166s.lib | lib/$(1)
 	cp $$< $$@
