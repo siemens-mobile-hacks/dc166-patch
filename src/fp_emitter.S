@@ -9,6 +9,7 @@
 	.equ emit_rt_helper,  0x0040d230
 	.equ emit_ir,         0x00425320
 	.equ reserve_location,0x00406850
+	.equ evict_location,  0x00406fb0
 	.equ alloc_stack_owner,0x004042c0
 	.equ stack_owner_size,0x00404490
 	.equ emit_assign,     0x0042efb0
@@ -33,9 +34,9 @@
 	.equ REG_R4_R5,       0x000040a8
 	.equ REG_R10_R11,     0x00004174
 	.equ RESULT_R4_R5,    0x000640a8
+	.equ REG_R3_WORD,     0x00001006
 	.equ REG_R4_WORD,     0x00001008
 	.equ REG_R5_WORD,     0x0000100a
-	.equ REG_R6_WORD,     0x0000100c
 	.equ REG_R10_WORD,    0x00001014
 	.equ REG_R11_WORD,    0x00001016
 	.equ REG_R14_WORD,    0x0000101c
@@ -229,12 +230,16 @@ fp_emitter:
 	call emit_node
 	add esp, 12
 
-	/* Preserve R5 around the marker.  emit_ir performs the same register move
-	   bookkeeping used elsewhere in this emitter. */
+	/* R3 is caller-clobbered.  Free any live value before using it to keep R5
+	   intact while the marker is passed to __loadlh. */
+	push REG_R3_WORD
+	call evict_location
+	add esp, 4
+
 	push 0
 	push REG_R5_WORD
 	push 0
-	push REG_R6_WORD
+	push REG_R3_WORD
 	push 0
 	push 0x2d
 	call emit_ir
@@ -254,7 +259,7 @@ fp_emitter:
 	add esp, 4
 
 	push 0
-	push REG_R6_WORD
+	push REG_R3_WORD
 	push 0
 	push REG_R5_WORD
 	push 0

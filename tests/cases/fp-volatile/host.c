@@ -7,6 +7,7 @@ volatile double f64_b[4];
 
 extern float evaluate_float(unsigned int operation, unsigned int index);
 extern double evaluate_double(unsigned int operation, unsigned int index);
+extern unsigned int check_float_load_preserves_r6(void);
 
 static void set_f32(volatile float *value, test_u16 high, test_u16 low)
 {
@@ -49,6 +50,7 @@ void main(void)
   test_check_f32(5U, &f32, 0x4060U, 0x0000U);
   f32.value = evaluate_float(5U, 1U);
   test_check_f32(6U, &f32, 0x4040U, 0x0000U);
+  test_check(13U, check_float_load_preserves_r6() == 0U);
 
   set_f64(&f64_a[1], 0x3ff8U, 0x0000U, 0x0000U, 0x0000U);
   set_f64(&f64_b[1], 0x4000U, 0x0000U, 0x0000U, 0x0000U);

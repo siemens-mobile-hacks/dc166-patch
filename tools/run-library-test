@@ -97,12 +97,8 @@ esac
 for case_asm in "$case_dir"/*.asm; do
   [[ -e "$case_asm" ]] || break
   case_asm_name="$(basename -- "$case_asm")"
-  if [[ "$memory_model" == small ]]; then
-    cp "$case_asm" "$run_dir/$case_asm_name"
-  else
-    "$project_root/runtime/render_model_asm.pl" \
-      "$model_code" "$case_asm" "$run_dir/$case_asm_name" "$runtime_variant"
-  fi
+  "$project_root/runtime/render_model_asm.pl" \
+    "$model_code" "$case_asm" "$run_dir/$case_asm_name" "$runtime_variant"
   case_asm_names+=("$case_asm_name")
 done
 if [[ -f "$case_dir/required-symbols.txt" ]]; then
