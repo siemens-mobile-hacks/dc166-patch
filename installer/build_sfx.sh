@@ -41,6 +41,8 @@ cp "$c166_patched" "$build_dir/package/payload/c166-patched.exe"
 cp "$l166_patched" "$build_dir/package/payload/l166-patched.exe"
 cp "$xfw166_patched" "$build_dir/package/payload/xfw166-patched.exe"
 cp "$disim166_patched" "$build_dir/package/payload/disim166-patched.dll"
+cp "$project_dir/runtime/fp166/LICENSE.txt" \
+    "$build_dir/package/payload/fp-runtime-license.txt"
 for variant in ext ext2; do
     cp "$runtime_lib_root/$variant/"*.lib \
         "$build_dir/package/payload/lib/$variant/"

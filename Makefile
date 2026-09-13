@@ -44,8 +44,45 @@ C166_SOURCES := $(wildcard runtime/c166l/*.c runtime/c166l/*.asm)
 C166_HEADERS := $(wildcard runtime/c166l/*.h)
 FP166_CFF48_SOURCE := runtime/fp166/cff48.asm
 FP166_CFF84_SOURCE := runtime/fp166/cff84.asm
+FP166_F32_SOURCE := runtime/fp166/fp32.c
+FP166_F32_WRAPPERS := adf4 mlf4 dvf4 cif44
+FP166_F64_SOURCE := runtime/fp166/fp64.c
+FP166_F64_WRAPPERS := adf8 mlf8 dvf8 cfi82 cfu82 cfi84 cfu84 cif48
 
 define FP_VARIANT_RULES
+$$(RUNTIME_WORK)/$(1)-fp166s/fp32.obj: $$(FP166_F32_SOURCE) \
+		$$(C166_PATCHED) $$(RUNTIME_EXTRACTED)
+	mkdir -p $$(@D)
+	cp $$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def $$(@D)/reg.def
+	cp $$(FP166_F32_SOURCE) $$(@D)/fp32.c
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(C166_PATCHED) -Ms $(if $(filter ext2,$(1)),-x2,) \
+		-O2 -AI -OX -o fp32.src fp32.c
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
+		fp32.src TO fp32.obj NOPR $(if $(filter ext2,$(1)),EXTEND2,EXTEND)
+
+$$(RUNTIME_WORK)/$(1)-fp166s/fp64.obj: $$(FP166_F64_SOURCE) \
+		$$(C166_PATCHED) $$(RUNTIME_EXTRACTED)
+	mkdir -p $$(@D)
+	cp $$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def $$(@D)/reg.def
+	cp $$(FP166_F64_SOURCE) $$(@D)/fp64.c
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(C166_PATCHED) -Ms $(if $(filter ext2,$(1)),-x2,) \
+		-O2 -AI -OX -o fp64.src fp64.c
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
+		fp64.src TO fp64.obj NOPR $(if $(filter ext2,$(1)),EXTEND2,EXTEND)
+
+$$(RUNTIME_WORK)/$(1)-fp166s/%.obj: runtime/fp166/%.asm \
+		runtime/render_model_asm.pl $$(RUNTIME_EXTRACTED)
+	mkdir -p $$(@D)
+	cp $$(RUNTIME_WORK)/extracted/SourceFiles/etc/reg.def $$(@D)/reg.def
+	$$(PERL) runtime/render_model_asm.pl s $$< $$(@D)/$$*.asm $(1)
+	cd $$(@D) && WINEDEBUG=-all wine \
+		$$(RUNTIME_WORK)/extracted/SourceFiles/bin/a166.exe \
+		$$*.asm TO $$*.obj NOPR $(if $(filter ext2,$(1)),EXTEND2,EXTEND)
+
 $$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj: $$(FP166_CFF48_SOURCE) runtime/render_model_asm.pl \
 		$$(RUNTIME_EXTRACTED)
 	mkdir -p $$(@D)
@@ -67,12 +104,30 @@ $$(RUNTIME_WORK)/$(1)-fp166s/cff84.obj: $$(FP166_CFF84_SOURCE) runtime/render_mo
 		cff84.asm TO cff84.obj NOPR EXTEND
 
 $$(RUNTIME_WORK)/$(1)-fp166s.lib: runtime/patch_fp166s.pl \
+		$$(addprefix $$(RUNTIME_WORK)/$(1)-fp166s/,$$(addsuffix .obj,$$(FP166_F32_WRAPPERS))) \
+		$$(RUNTIME_WORK)/$(1)-fp166s/fp32.obj \
+		$$(addprefix $$(RUNTIME_WORK)/$(1)-fp166s/,$$(addsuffix .obj,$$(FP166_F64_WRAPPERS))) \
+		$$(RUNTIME_WORK)/$(1)-fp166s/fp64.obj \
 		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj \
 		$$(RUNTIME_WORK)/$(1)-fp166s/cff84.obj $$(RUNTIME_EXTRACTED)
 	$$(PERL) runtime/patch_fp166s.pl \
 		$$(RUNTIME_WORK)/extracted/SourceFiles/lib/$(1)/fp166s.lib \
+		$$(RUNTIME_WORK)/$(1)-fp166s/adf4.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/mlf4.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/dvf4.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cif44.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/adf8.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/mlf8.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/dvf8.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cfi82.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cfu82.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cfi84.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cfu84.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/cif48.obj \
 		$$(RUNTIME_WORK)/$(1)-fp166s/cff48.obj \
-		$$(RUNTIME_WORK)/$(1)-fp166s/cff84.obj $$@
+		$$(RUNTIME_WORK)/$(1)-fp166s/cff84.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/fp32.obj \
+		$$(RUNTIME_WORK)/$(1)-fp166s/fp64.obj $$@
 
 lib/$(1)/fp166s.lib: $$(RUNTIME_WORK)/$(1)-fp166s.lib | lib/$(1)
 	cp $$< $$@
@@ -218,6 +273,7 @@ $(FINAL_DISIM166_PATCH): $(DISIM166_ORIGINAL) $(DISIM166_PATCHED) src/make_vkp.p
 $(FINAL_INSTALLER): $(ORIGINAL_INSTALLER) $(C166_PATCHED) $(L166_PATCHED) $(XFW166_PATCHED) \
 		$(DISIM166_PATCHED) \
 		$(RUNTIME_LIBS) installer/build_sfx.sh installer/setup.cmd \
+		runtime/fp166/LICENSE.txt \
 		installer/sfx-config.txt installer/vendor/7zSD.sfx | dist
 	TASKING_C166_INSTALLER='$(abspath $(ORIGINAL_INSTALLER))' \
 	C166_PATCHED='$(C166_PATCHED)' L166_PATCHED='$(L166_PATCHED)' \
@@ -248,6 +304,7 @@ verify: all
 	cmp $(L166_PATCHED) $(WORK)/sfx-verify/payload/l166-patched.exe
 	cmp $(XFW166_PATCHED) $(WORK)/sfx-verify/payload/xfw166-patched.exe
 	cmp $(DISIM166_PATCHED) $(WORK)/sfx-verify/payload/disim166-patched.dll
+	cmp runtime/fp166/LICENSE.txt $(WORK)/sfx-verify/payload/fp-runtime-license.txt
 	@for variant in $(RUNTIME_VARIANTS); do \
 		cmp lib/$$variant/fp166s.lib \
 			$(WORK)/sfx-verify/payload/lib/$$variant/fp166s.lib || exit 1; \

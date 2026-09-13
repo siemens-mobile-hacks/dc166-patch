@@ -117,6 +117,10 @@ if [[ "$memory_model" == small ]]; then
   compiler_options+=(-DDC166_SMALL_ORACLE)
 fi
 cp "$project_root/tests/common/test.h" "$run_dir/test.h"
+for case_include in "$case_dir"/*.h "$case_dir"/*.inc; do
+  [[ -e "$case_include" ]] || continue
+  cp "$case_include" "$run_dir/$(basename -- "$case_include")"
+done
 layout_source="$project_root/tests/support/layout.ilo"
 if [[ "$memory_model" == tiny ]]; then
   layout_source="$project_root/tests/support/layout-tiny.ilo"

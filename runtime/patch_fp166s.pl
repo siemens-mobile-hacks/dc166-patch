@@ -3,8 +3,16 @@
 use strict;
 use warnings;
 
-@ARGV == 4 or die "usage: $0 INPUT.lib CFF48.obj CFF84.obj OUTPUT.lib\n";
-my ($input_path, $cff48_path, $cff84_path, $output_path) = @ARGV;
+@ARGV == 18 or die "usage: $0 INPUT.lib ADF4.obj MLF4.obj DVF4.obj CIF44.obj " .
+    "ADF8.obj MLF8.obj DVF8.obj CFI82.obj CFU82.obj " .
+    "CFI84.obj CFU84.obj CIF48.obj " .
+    "CFF48.obj CFF84.obj FP32.obj FP64.obj " .
+    "OUTPUT.lib\n";
+my ($input_path, $adf4_path, $mlf4_path, $dvf4_path, $cif44_path,
+    $adf8_path, $mlf8_path, $dvf8_path, $cfi82_path, $cfu82_path,
+    $cfi84_path, $cfu84_path,
+    $cif48_path, $cff48_path, $cff84_path,
+    $fp32_path, $fp64_path, $output_path) = @ARGV;
 
 sub read_raw {
     my ($path) = @_;
@@ -17,9 +25,23 @@ sub read_raw {
 
 my $archive = read_raw($input_path);
 my %replacement = (
+    'adf4.obj' => read_raw($adf4_path),
+    'mlf4.obj' => read_raw($mlf4_path),
+    'dvf4.obj' => read_raw($dvf4_path),
+    'cif44.obj' => read_raw($cif44_path),
+    'adf8.obj' => read_raw($adf8_path),
+    'mlf8.obj' => read_raw($mlf8_path),
+    'dvf8.obj' => read_raw($dvf8_path),
+    'cfi82.obj' => read_raw($cfi82_path),
+    'cfu82.obj' => read_raw($cfu82_path),
+    'cfi84.obj' => read_raw($cfi84_path),
+    'cfu84.obj' => read_raw($cfu84_path),
+    'cif48.obj' => read_raw($cif48_path),
     'cff48.obj' => read_raw($cff48_path),
     'cff84.obj' => read_raw($cff84_path),
 );
+my $fp32 = read_raw($fp32_path);
+my $fp64 = read_raw($fp64_path);
 substr($archive, 0, 7) eq "!<ar>!\n"
     or die "$input_path: invalid ar166 header\n";
 
@@ -45,6 +67,10 @@ while (pos($archive) < length($archive)) {
 for my $name (sort keys %replacement) {
     ($patched{$name} // 0) == 1 or die "$input_path: missing $name\n";
 }
+$result .= sprintf("!<ar:%-20s %d>!\n", 'fp32.obj', length($fp32));
+$result .= $fp32;
+$result .= sprintf("!<ar:%-20s %d>!\n", 'fp64.obj', length($fp64));
+$result .= $fp64;
 
 open my $output_fh, '>:raw', $output_path or die "$output_path: $!\n";
 print {$output_fh} $result or die "$output_path: $!\n";

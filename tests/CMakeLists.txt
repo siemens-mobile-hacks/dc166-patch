@@ -119,6 +119,10 @@ endforeach()
 set(runtime_all_model_cases
   fp-arithmetic
   fp-conversions
+  fp-ieee-f32-arithmetic
+  fp-ieee-f32-conversions
+  fp-ieee-f64-arithmetic
+  fp-ieee-f64-conversions
   fp-storage
   libc-allocation
   libc-casecmp
@@ -168,6 +172,16 @@ foreach(variant IN ITEMS ext ext2)
     endforeach()
 
     add_runtime_iss_test("${variant}" "${model}" "runtime-link-all")
+  endforeach()
+endforeach()
+
+foreach(variant IN ITEMS ext ext2)
+  foreach(case_name IN ITEMS
+      fp-ieee-f32-arithmetic
+      fp-ieee-f32-conversions
+      fp-ieee-f64-arithmetic
+      fp-ieee-f64-conversions)
+    add_runtime_iss_test("${variant}" "small" "${case_name}")
   endforeach()
 endforeach()
 

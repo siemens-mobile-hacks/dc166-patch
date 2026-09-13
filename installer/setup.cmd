@@ -65,6 +65,8 @@ for %%V in (ext ext2) do (
   copy /b /y "%ROOT%payload\lib\%%V\fp166s.lib" "%INSTALL_DIR%\lib\%%V\fp166s.lib" >nul
   if errorlevel 1 goto copy_failed
 )
+copy /y "%ROOT%payload\fp-runtime-license.txt" "%INSTALL_DIR%\lib\fp-runtime-license.txt" >nul
+if errorlevel 1 goto copy_failed
 
 echo.
 echo TASKING C166 v8.6r1 patched successfully.

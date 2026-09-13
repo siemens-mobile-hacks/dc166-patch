@@ -1,6 +1,22 @@
 #include "test.h"
 
 static volatile test_f64 result;
+static volatile test_f32 result_f32;
+
+float expression_f32_mul_add(float a, float b, float c)
+{
+  return a * b + c;
+}
+
+float expression_f32_add_mul(float a, float b, float c)
+{
+  return a + b * c;
+}
+
+float expression_f32_two_products(float a, float b, float c, float d)
+{
+  return a * b + c * d;
+}
 
 double expression_mul_add(double a, double b, double c)
 {
@@ -35,6 +51,13 @@ static void check_result(test_u16 id, double value,
   test_check_f64(id, (test_f64 *)&result, w3, w2, w1, w0);
 }
 
+static void check_result_f32(test_u16 id, float value,
+                             test_u16 high, test_u16 low)
+{
+  result_f32.value = value;
+  test_check_f32(id, (test_f32 *)&result_f32, high, low);
+}
+
 void main(void)
 {
   simulator_result = 0U;
@@ -51,6 +74,14 @@ void main(void)
                0x402cU, 0x0000U, 0x0000U, 0x0000U);
   check_result(6U, expression_two_products(2.0, 3.0, 4.0, 5.0),
                0x403aU, 0x0000U, 0x0000U, 0x0000U);
+
+  check_result_f32(7U, expression_f32_mul_add(3.0f, 4.0f, 3.0f),
+                   0x4170U, 0x0000U);
+  check_result_f32(8U, expression_f32_add_mul(2.0f, 3.0f, 4.0f),
+                   0x4160U, 0x0000U);
+  check_result_f32(9U,
+                   expression_f32_two_products(2.0f, 3.0f, 4.0f, 5.0f),
+                   0x41d0U, 0x0000U);
 
   simulator_stop();
 }

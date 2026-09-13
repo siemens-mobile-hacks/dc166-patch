@@ -1,5 +1,7 @@
 adf4.obj
+fp32.obj
 adf8.obj
+fp64.obj
 cff48.obj
 cff84.obj
 cfi42.obj
