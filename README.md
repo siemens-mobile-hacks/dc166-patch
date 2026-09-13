@@ -5,7 +5,8 @@ Patches and runtime libraries for TASKING C166/ST10 v8.6r1 Build 753.
 Changes:
 
 - removed compiler, linker and debugger demo restrictions;
-- enabled `float`/`double` code generation, fixed their Classic ABI and
+- enabled `float`/`double` code generation, including conditional
+  expressions, fixed their Classic ABI and
   fixed IEEE `float`/`double` width conversions, including signed zero,
   subnormal values, round-to-nearest-even, infinities and NaNs, and fixed
   indexed `float` loads in Huge model;

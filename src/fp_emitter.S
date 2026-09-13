@@ -17,6 +17,7 @@
 	.equ emit_call,       0x00428db0
 	.equ emit_indirect,   0x004531b0
 	.equ emit_comma,      0x0041b580
+	.equ emit_conditional,0x0041ec90
 	.equ emit_deref,      0x004395c0
 	.equ transfer_owner,  0x004187e0
 	.equ release_owner,   0x00418800
@@ -139,6 +140,8 @@ fp_emitter:
 	je .Lcall
 	cmp al, 0x6b                       /* indirect/function call variant */
 	je .Lindirect
+	cmp al, 0x69                       /* conditional expression */
+	je .Lconditional
 	cmp al, 0x2c                       /* comma */
 	je .Lcomma
 	jmp .Lunsupported
@@ -177,6 +180,8 @@ fp_emitter:
 	je .Ldouble_call
 	cmp al, 0x6b                       /* indirect/function call variant */
 	je .Lindirect
+	cmp al, 0x69                       /* conditional expression */
+	je .Lconditional
 	cmp al, 0x2c                       /* comma */
 	je .Lcomma
 	jmp .Lunsupported
@@ -1048,6 +1053,14 @@ fp_emitter:
 	push edi
 	push esi
 	call emit_indirect
+	add esp, 12
+	jmp .Ldone
+
+.Lconditional:
+	push ebx
+	push edi
+	push esi
+	call emit_conditional
 	add esp, 12
 	jmp .Ldone
 
