@@ -1,6 +1,19 @@
 find_program(PERL_EXECUTABLE perl REQUIRED)
 
 add_test(
+  NAME compiler.volatile-fp
+  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/check-volatile-fp"
+          "${CMAKE_BINARY_DIR}/work/c166-patched.exe"
+          "${CMAKE_CURRENT_SOURCE_DIR}/cases/fp-volatile/compile.c"
+          "${CMAKE_BINARY_DIR}/compiler-tests"
+)
+set_tests_properties(compiler.volatile-fp PROPERTIES
+  LABELS "compiler;wine;floating-point"
+  RUN_SERIAL TRUE
+  TIMEOUT 90
+)
+
+add_test(
   NAME linker.demo-limits
   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/check-linker-demo-limits"
           "${DC166_RUNTIME_WORK}/extracted/SourceFiles/bin/a166.exe"
@@ -109,6 +122,9 @@ endfunction()
 foreach(variant IN ITEMS ext ext2)
   add_runtime_iss_test("${variant}" "large" "iss-code-segment-boundaries")
   add_runtime_iss_test("${variant}" "huge" "fp-huge-indexed-load" "O2")
+  foreach(model IN ITEMS medium large)
+    add_runtime_iss_test("${variant}" "${model}" "fp-volatile" "O2")
+  endforeach()
   foreach(model IN ITEMS tiny small medium large huge)
     add_runtime_iss_test("${variant}" "${model}" "fp-conditional" "O2")
     add_runtime_iss_test("${variant}" "${model}" "fp-f64-to-f32" "O2")

@@ -37,6 +37,9 @@
 	.equ REG_R5_WORD,     0x0000100a
 	.equ REG_R10_WORD,    0x00001014
 	.equ REG_R11_WORD,    0x00001016
+	.equ REG_R14_WORD,    0x0000101c
+	.equ REG_R15_WORD,    0x0000101e
+	.equ REG_R14_R15,     0x000041fc
 	.equ CONST_VALUE,     0x0000002a
 	.equ RESULT_R10_R11,  0x00064174
 	.equ WANT_DBL_R11,    0x000b0008
@@ -201,23 +204,31 @@ fp_emitter:
 	jnz .Lderef_lvalue
 	mov eax, dword ptr [esi + 0x14]
 	and eax, 0x000f0000
+	cmp eax, 0x00040000
+	je .Lderef_far
 	cmp eax, 0x00050000
 	je .Lderef_huge
 	cmp eax, 0x00080000
 	jne .Lderef_generic
 
-	/* A dynamic Huge-address float dereference cannot use the generic emitter:
+	/* A dynamic Far/Huge-address float dereference cannot use the generic emitter:
 	   it redispatches the same float node indefinitely.  Materialize its linear
-	   address and use the ordinary 32-bit Huge load helper. */
+	   address and use the matching ordinary 32-bit load helper. */
+.Lderef_far:
+	/* __loadlh consumes a Huge segment:offset pointer.  Ask the regular
+	   address emitter to convert the Far page:offset value first. */
+	mov ecx, 0x00050040
+	jmp .Lderef_wide
 .Lderef_huge:
+	mov ecx, dword ptr [esi + 0x14]
+	and ecx, 0x000f0000
+	or ecx, 0x40
+.Lderef_wide:
 	mov eax, dword ptr [esi + 0x08]
 	cmp byte ptr [esi], 0x1f
 	jne .Lderef_huge_have_addr
 	mov eax, dword ptr [esi + 0x0c]
 .Lderef_huge_have_addr:
-	mov ecx, dword ptr [esi + 0x14]
-	and ecx, 0x000f0000
-	or ecx, 0x40
 	push REG_R4_R5
 	push ecx
 	push eax
@@ -234,19 +245,6 @@ fp_emitter:
 	push esi
 	call record_result
 	add esp, 8
-
-	mov eax, dword ptr [esi + 0x08]
-	cmp byte ptr [esi], 0x1f
-	jne .Lderef_huge_release
-	mov eax, dword ptr [esi + 0x0c]
-.Lderef_huge_release:
-	push eax
-	push 0
-	push eax
-	call record_result
-	add esp, 8
-	call release_owner
-	add esp, 4
 
 	test edi, edi
 	jz .Ldone
@@ -673,14 +671,16 @@ fp_emitter:
 .Ldouble_compound_have_addr:
 	mov ecx, dword ptr [ebx + 0x14]
 	and ecx, 0x000f0000
+	mov edx, REG_R14_WORD
 	cmp ecx, 0x00010000
 	jne .Ldouble_compound_addr_wide
 	or ecx, 0x18
 	jmp .Ldouble_compound_addr_ready
 .Ldouble_compound_addr_wide:
 	or ecx, 0x40
+	mov edx, REG_R14_R15
 .Ldouble_compound_addr_ready:
-	push 0
+	push edx
 	push ecx
 	push eax
 	call emit_node
@@ -708,20 +708,40 @@ fp_emitter:
 .Ldouble_compound_move_addr:
 	mov ecx, dword ptr [ebx + 0x14]
 	and ecx, 0x000f0000
-	mov edx, REG_R4_WORD
+	mov edx, REG_R14_WORD
 	cmp ecx, 0x00010000
 	jne .Ldouble_compound_move_wide
 	or ecx, 0x18
 	jmp .Ldouble_compound_move_ready
 .Ldouble_compound_move_wide:
 	or ecx, 0x40
-	mov edx, REG_R4_R5
+	mov edx, REG_R14_R15
 .Ldouble_compound_move_ready:
 	push edx
 	push ecx
 	push eax
 	call move_result
 	add esp, 12
+
+	/* Load through an untracked copy.  __load8* advances R4 while the
+	   original lvalue address must remain live for the following store. */
+	push 0
+	push REG_R14_WORD
+	push 0
+	push REG_R4_WORD
+	push 0
+	push 0x2d
+	call emit_ir
+	add esp, 24
+
+	push 0
+	push REG_R15_WORD
+	push 0
+	push REG_R5_WORD
+	push 0
+	push 0x2d
+	call emit_ir
+	add esp, 24
 
 	mov eax, dword ptr [ebx + 0x14]
 	and eax, 0x000f0000
@@ -817,8 +837,20 @@ fp_emitter:
 
 .Ldouble_assign_deref:
 	mov ebx, eax                       /* lhs */
-	/* Materialize the destination address before the FP helper calls.  The
-	   allocator will keep it in a preserved register (normally R12/R13). */
+	/* Preserve source order for the compiler's CSE use ranges.  In
+	   b[index] = a[index], the source index expression is the first use and
+	   the destination index expression is the second one. */
+	push REG_R10_WORD
+	push WANT_DBL_R10
+	push dword ptr [esi + 0x0c]
+	call emit_node
+	add esp, 12
+	.ifdef PROBE_ASSIGN_AFTER_RHS
+	mov eax, 0xda100001
+	mov dword ptr [eax], eax
+	.endif
+
+	/* Materialize the destination address after the assigned value. */
 	mov eax, dword ptr [ebx + 0x08]
 	cmp byte ptr [ebx], 0x1f
 	jne .Ldouble_assign_have_addr
@@ -840,17 +872,6 @@ fp_emitter:
 	add esp, 12
 	.ifdef PROBE_ASSIGN_AFTER_ADDR
 	mov eax, 0xda100002
-	mov dword ptr [eax], eax
-	.endif
-
-	/* Materialize the assigned value at the top of the user stack. */
-	push REG_R10_WORD
-	push WANT_DBL_R10
-	push dword ptr [esi + 0x0c]
-	call emit_node
-	add esp, 12
-	.ifdef PROBE_ASSIGN_AFTER_RHS
-	mov eax, 0xda100001
 	mov dword ptr [eax], eax
 	.endif
 
@@ -879,6 +900,13 @@ fp_emitter:
 	mov eax, dword ptr [ebx + 0x0c]
 1:
 	push eax
+	call move_result
+	add esp, 12
+
+	/* Address generation may relocate the user-stack pointer. */
+	push REG_R10_WORD
+	push WANT_DBL_RESULT
+	push dword ptr [esi + 0x0c]
 	call move_result
 	add esp, 12
 

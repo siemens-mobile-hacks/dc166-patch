@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -eq 3 ]] || {
+  echo "usage: $0 PATCHED_C166_EXE SOURCE WORK_ROOT" >&2
+  exit 2
+}
+
+compiler="$(readlink -f -- "$1")"
+source_file="$(readlink -f -- "$2")"
+work_root="$(readlink -m -- "$3")"
+
+[[ -f "$compiler" && -f "$source_file" ]] || {
+  echo "check-volatile-fp: input not found" >&2
+  exit 2
+}
+
+mkdir -p -- "$work_root"
+run_dir="$(mktemp -d "$work_root/volatile-fp.XXXXXXXX")"
+trap 'rm -rf -- "$run_dir"' EXIT
+
+if [[ "${C166_HEADLESS_X_ACTIVE:-}" != 1 ]]; then
+  export C166_HEADLESS_X_LOCK="$work_root/headless-x.lock"
+  exec "$(dirname -- "$0")/../tools/with-headless-x" "$0" "$@"
+fi
+
+wine_prefix="${WINEPREFIX:-$HOME/.wine}"
+wine_environment=(
+  "WINEPREFIX=$wine_prefix"
+  "WINEDEBUG=${WINEDEBUG:--all}"
+  "WINEDLLOVERRIDES=${WINEDLLOVERRIDES:-winemenubuilder.exe=d;mscoree,mshtml=}"
+  "LIBGL_ALWAYS_SOFTWARE=${LIBGL_ALWAYS_SOFTWARE:-1}"
+)
+
+to_windows_path() {
+  printf 'Z:%s\n' "$1"
+}
+
+for model in m l; do
+  for optimization in 0 1 2 3 s z; do
+    output="$run_dir/${model}-${optimization}.src"
+    log="$run_dir/${model}-${optimization}.log"
+    if ! env "${wine_environment[@]}" wine "$compiler" \
+        "$(to_windows_path "$source_file")" -M"$model" -O"$optimization" \
+        -o "$(to_windows_path "$output")" >"$log" 2>&1; then
+      cat "$log" >&2
+      echo "check-volatile-fp: failed -M$model -O$optimization" >&2
+      exit 1
+    fi
+    [[ -s "$output" ]] || {
+      cat "$log" >&2
+      echo "check-volatile-fp: no output for -M$model -O$optimization" >&2
+      exit 1
+    }
+    for symbol in _evaluate_float _evaluate_double __loadlh __load8f \
+                  __store8f __adf4r __adf8r; do
+      grep -Fq "$symbol" "$output" || {
+        echo "check-volatile-fp: $symbol missing for -M$model -O$optimization" >&2
+        exit 1
+      }
+    done
+  done
+done
+
+echo "volatile FP compile matrix passed"
