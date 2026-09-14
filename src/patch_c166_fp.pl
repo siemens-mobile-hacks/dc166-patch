@@ -50,6 +50,16 @@ my @fixed_patches = (
     [0x001283d8,
      '00003000300030003000ffff',
      '30003000300030003000300c'],
+    # The O3 Small/Tiny setup injects memcpy and memset as `intrinsic`
+    # declarations.  That source-language qualifier makes the function
+    # designators non-addressable, so a conforming `&memcpy`/`&memset`
+    # (including the implicit conversion in a pointer initializer) is
+    # rejected.  Keep the declarations available as ordinary extern
+    # functions.  This deliberately falls back to the ABI-correct runtime
+    # calls in the two affected models instead of applying an optimization
+    # which changes the language semantics.
+    [0x001182b0, '696e7472696e736963', '65787465726e202020'],
+    [0x001182f8, '696e7472696e736963', '65787465726e202020'],
 );
 
 my $old_stub = pack('H*', '68c8125100680f220000e87197070083c408c3');

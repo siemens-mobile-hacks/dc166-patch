@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -eq 3 ]] || {
+  echo "usage: $0 PATCHED_C166_EXE SOURCE WORK_ROOT" >&2
+  exit 2
+}
+
+compiler="$(readlink -f -- "$1")"
+source_file="$(readlink -f -- "$2")"
+work_root="$(readlink -m -- "$3")"
+
+[[ -f "$compiler" && -f "$source_file" ]] || {
+  echo "check-builtin-function-address: input not found" >&2
+  exit 2
+}
+
+mkdir -p -- "$work_root"
+run_dir="$(mktemp -d "$work_root/builtin-function-address.XXXXXXXX")"
+trap 'rm -rf -- "$run_dir"' EXIT
+
+if [[ "${C166_HEADLESS_X_ACTIVE:-}" != 1 ]]; then
+  export C166_HEADLESS_X_LOCK="$work_root/headless-x.lock"
+  exec "$(dirname -- "$0")/../tools/with-headless-x" "$0" "$@"
+fi
+
+wine_prefix="${WINEPREFIX:-$HOME/.wine}"
+wine_environment=(
+  "WINEPREFIX=$wine_prefix"
+  "WINEDEBUG=${WINEDEBUG:--all}"
+  "WINEDLLOVERRIDES=${WINEDLLOVERRIDES:-winemenubuilder.exe=d;mscoree,mshtml=}"
+  "LIBGL_ALWAYS_SOFTWARE=${LIBGL_ALWAYS_SOFTWARE:-1}"
+)
+
+to_windows_path() {
+  printf 'Z:%s\n' "$1"
+}
+
+for model in s t; do
+  output="$run_dir/$model-O3.src"
+  log="$run_dir/$model-O3.log"
+  if ! env "${wine_environment[@]}" wine "$compiler" \
+      "$(to_windows_path "$source_file")" -M"$model" -O3 -e -x \
+      -o "$(to_windows_path "$output")" >"$log" 2>&1; then
+    cat "$log" >&2
+    echo "check-builtin-function-address: failed -M$model -O3" >&2
+    exit 1
+  fi
+  [[ -s "$output" ]] || {
+    cat "$log" >&2
+    echo "check-builtin-function-address: no output for -M$model -O3" >&2
+    exit 1
+  }
+
+  for symbol in _memcpy _memmove _memset; do
+    grep -Eq "^[[:space:]]*(DSPTR|DW)[[:space:]]+$symbol([[:space:]]|$)" \
+      "$output" || {
+      echo "check-builtin-function-address: relocation for $symbol missing in -M$model -O3" >&2
+      exit 1
+    }
+    grep -Eq "^[[:space:]]*EXTERN[[:space:]]+$symbol:(FAR|NEAR)([[:space:]]|$)" \
+      "$output" || {
+      echo "check-builtin-function-address: extern for $symbol missing in -M$model -O3" >&2
+      exit 1
+    }
+  done
+done
+
+echo "builtin function-address compile matrix passed"

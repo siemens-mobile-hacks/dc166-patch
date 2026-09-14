@@ -14,6 +14,19 @@ set_tests_properties(compiler.volatile-fp PROPERTIES
 )
 
 add_test(
+  NAME compiler.builtin-function-address
+  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/check-builtin-function-address"
+          "${CMAKE_BINARY_DIR}/work/c166-patched.exe"
+          "${CMAKE_CURRENT_SOURCE_DIR}/cases/builtin-function-address/compile.c"
+          "${CMAKE_BINARY_DIR}/compiler-tests"
+)
+set_tests_properties(compiler.builtin-function-address PROPERTIES
+  LABELS "compiler;wine;builtins"
+  RUN_SERIAL TRUE
+  TIMEOUT 90
+)
+
+add_test(
   NAME linker.demo-limits
   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/check-linker-demo-limits"
           "${DC166_RUNTIME_WORK}/extracted/SourceFiles/bin/a166.exe"
