@@ -2,6 +2,7 @@ AS      ?= as
 LD      ?= ld
 OBJCOPY ?= objcopy
 PERL    ?= perl
+MINGW_CC ?= i686-w64-mingw32-gcc
 
 WORK ?= $(CURDIR)/build/work
 RUNTIME_WORK ?= $(CURDIR)/build/runtime
@@ -17,6 +18,7 @@ ELF := $(WORK)/fp_emitter.elf
 PAYLOAD := $(WORK)/fp_emitter.bin
 C166_BASE := $(WORK)/c166-base.exe
 C166_PATCHED := $(WORK)/c166-patched.exe
+CC166_PATCHED := $(WORK)/cc166-patched.exe
 L166_PATCHED := $(WORK)/l166-patched.exe
 XFW166_PATCHED := $(WORK)/xfw166-patched.exe
 DISIM166_PATCHED := $(WORK)/disim166-patched.dll
@@ -277,6 +279,9 @@ $(C166_BASE): $(C166_ORIGINAL) src/patches/c166_base.vkp src/apply_vkp.pl | $(WO
 $(C166_PATCHED): $(C166_BASE) $(PAYLOAD) src/patch_c166_fp.pl
 	$(PERL) src/patch_c166_fp.pl $(C166_BASE) $@ $(PAYLOAD)
 
+$(CC166_PATCHED): src/cc166_packed_fallback.c | $(WORK)
+	$(MINGW_CC) -Os -s -Wall -Wextra -o $@ $<
+
 $(L166_PATCHED): $(L166_ORIGINAL) src/patches/l166_base.vkp src/apply_vkp.pl | $(WORK)
 	$(PERL) src/apply_vkp.pl src/patches/l166_base.vkp $(L166_ORIGINAL) $@
 
@@ -298,13 +303,13 @@ $(FINAL_XFW166_PATCH): $(XFW166_ORIGINAL) $(XFW166_PATCHED) src/make_vkp.pl | pa
 $(FINAL_DISIM166_PATCH): $(DISIM166_ORIGINAL) $(DISIM166_PATCHED) src/make_vkp.pl | patches/final
 	$(PERL) src/make_vkp.pl $(DISIM166_ORIGINAL) $(DISIM166_PATCHED) $@
 
-$(FINAL_INSTALLER): $(ORIGINAL_INSTALLER) $(C166_PATCHED) $(L166_PATCHED) $(XFW166_PATCHED) \
+$(FINAL_INSTALLER): $(ORIGINAL_INSTALLER) $(C166_PATCHED) $(CC166_PATCHED) $(L166_PATCHED) $(XFW166_PATCHED) \
 		$(DISIM166_PATCHED) \
 		$(RUNTIME_LIBS) installer/build_sfx.sh installer/setup.cmd \
 		runtime/fp166/LICENSE.txt \
 		installer/sfx-config.txt installer/vendor/7zSD.sfx | dist
 	TASKING_C166_INSTALLER='$(abspath $(ORIGINAL_INSTALLER))' \
-	C166_PATCHED='$(C166_PATCHED)' L166_PATCHED='$(L166_PATCHED)' \
+	C166_PATCHED='$(C166_PATCHED)' CC166_PATCHED='$(CC166_PATCHED)' L166_PATCHED='$(L166_PATCHED)' \
 	XFW166_PATCHED='$(XFW166_PATCHED)' DISIM166_PATCHED='$(DISIM166_PATCHED)' \
 	RUNTIME_LIB_ROOT='$(abspath lib)' \
 	./installer/build_sfx.sh
@@ -329,6 +334,7 @@ verify: all
 	cmp installer/setup.cmd $(WORK)/sfx-verify/setup.cmd
 	cmp $(ORIGINAL_INSTALLER) $(WORK)/sfx-verify/original-installer.exe
 	cmp $(C166_PATCHED) $(WORK)/sfx-verify/payload/c166-patched.exe
+	cmp $(CC166_PATCHED) $(WORK)/sfx-verify/payload/cc166-patched.exe
 	cmp $(L166_PATCHED) $(WORK)/sfx-verify/payload/l166-patched.exe
 	cmp $(XFW166_PATCHED) $(WORK)/sfx-verify/payload/xfw166-patched.exe
 	cmp $(DISIM166_PATCHED) $(WORK)/sfx-verify/payload/disim166-patched.dll

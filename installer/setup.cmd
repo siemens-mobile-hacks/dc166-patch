@@ -31,11 +31,14 @@ if defined ProgramFiles set "INSTALL_DIR=%ProgramFiles%\TASKING\dc166 v8.6"
 :replace_files
 if not defined INSTALL_DIR goto not_found
 if not exist "%INSTALL_DIR%\bin\c166.exe" goto not_found
+if not exist "%INSTALL_DIR%\bin\cc166.exe" goto not_found
 if not exist "%INSTALL_DIR%\bin\l166.exe" goto not_found
 if not exist "%INSTALL_DIR%\bin\xfw166.exe" goto not_found
 if not exist "%INSTALL_DIR%\bin\disim166.dll" goto not_found
 
 if not exist "%INSTALL_DIR%\bin\c166.exe.pre-patched.bak" copy /b "%INSTALL_DIR%\bin\c166.exe" "%INSTALL_DIR%\bin\c166.exe.pre-patched.bak" >nul
+if errorlevel 1 goto copy_failed
+if not exist "%INSTALL_DIR%\bin\cc166-original.exe" copy /b "%INSTALL_DIR%\bin\cc166.exe" "%INSTALL_DIR%\bin\cc166-original.exe" >nul
 if errorlevel 1 goto copy_failed
 if not exist "%INSTALL_DIR%\bin\l166.exe.pre-patched.bak" copy /b "%INSTALL_DIR%\bin\l166.exe" "%INSTALL_DIR%\bin\l166.exe.pre-patched.bak" >nul
 if errorlevel 1 goto copy_failed
@@ -45,6 +48,8 @@ if not exist "%INSTALL_DIR%\bin\disim166.dll.pre-patched.bak" copy /b "%INSTALL_
 if errorlevel 1 goto copy_failed
 
 copy /b /y "%ROOT%payload\c166-patched.exe" "%INSTALL_DIR%\bin\c166.exe" >nul
+if errorlevel 1 goto copy_failed
+copy /b /y "%ROOT%payload\cc166-patched.exe" "%INSTALL_DIR%\bin\cc166.exe" >nul
 if errorlevel 1 goto copy_failed
 copy /b /y "%ROOT%payload\l166-patched.exe" "%INSTALL_DIR%\bin\l166.exe" >nul
 if errorlevel 1 goto copy_failed

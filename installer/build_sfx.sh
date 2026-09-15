@@ -5,6 +5,7 @@ script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 project_dir=$(cd -- "$script_dir/.." && pwd)
 tasking_installer=${TASKING_C166_INSTALLER:-$project_dir/inputs/Tasking-C166-8.6r1-original.exe}
 c166_patched=${C166_PATCHED:-$project_dir/build/work/c166-patched.exe}
+cc166_patched=${CC166_PATCHED:-$project_dir/build/work/cc166-patched.exe}
 l166_patched=${L166_PATCHED:-$project_dir/build/work/l166-patched.exe}
 xfw166_patched=${XFW166_PATCHED:-$project_dir/build/work/xfw166-patched.exe}
 disim166_patched=${DISIM166_PATCHED:-$project_dir/build/work/disim166-patched.dll}
@@ -16,6 +17,7 @@ output=$project_dir/dist/Tasking-C166-8.6r1-patched.exe
 test -f "$tasking_installer"
 test -f "$sfx_module"
 test -f "$c166_patched"
+test -f "$cc166_patched"
 test -f "$l166_patched"
 test -f "$xfw166_patched"
 test -f "$disim166_patched"
@@ -39,6 +41,7 @@ mkdir -p "$build_dir/package/payload/lib/ext" \
 cp "$script_dir/setup.cmd" "$build_dir/package/setup.cmd"
 cp "$tasking_installer" "$build_dir/package/original-installer.exe"
 cp "$c166_patched" "$build_dir/package/payload/c166-patched.exe"
+cp "$cc166_patched" "$build_dir/package/payload/cc166-patched.exe"
 cp "$l166_patched" "$build_dir/package/payload/l166-patched.exe"
 cp "$xfw166_patched" "$build_dir/package/payload/xfw166-patched.exe"
 cp "$disim166_patched" "$build_dir/package/payload/disim166-patched.dll"
